@@ -1,3 +1,5 @@
+# JewelCalc.py
+# JewelCalc — Jewellery billing & customer manager (fixed: ie_new_metal Streamlit state bug)
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -35,17 +37,18 @@ st.markdown(
     }
     .jewel-tab-bar-fixed {
         position: fixed;
-        top: 64px;
+        top: 40px;
         left: 0; right: 0;
         width: 100vw;
         z-index: 1001;
         background: linear-gradient(90deg,#f3e5f5 0%,#e1f5fe 100%);
         border-bottom: 2px solid #e1bee7;
-        padding-bottom: 0;
-        height: 54px;
+        padding-bottom: 20;
+        padding-top: 20px;      /* <-- Add this line */
+        height: 64px;
         display: flex;
         justify-content: center;
-        align-items: flex-end;
+        align-items: flex-start;
     }
     .jewel-tab-bar-fixed .element-container {margin-bottom:0 !important;}
     .jewel-btn {
@@ -70,7 +73,7 @@ st.markdown(
         border-bottom: 4px solid #43a047;
         box-shadow: 0px 4px 18px #e1bee7;
     }
-    .jewel-space {height:112px;}
+    .jewel-space {height:174px;}
     .main .block-container {padding-top:0;}
     </style>
     """,
@@ -416,7 +419,7 @@ def create_invoice_pdf_from_no(invoice_no):
     x_margin = 40
     y = height - 50
     c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(width / 2, y, "JEWELLERY INVOICE")
+    c.drawCentredString(width / 2, y, "JewelCalc Invoice")
     y -= 30
     c.setFont("Helvetica", 10)
     c.drawString(x_margin, y, f"Invoice No: {invoice_row['invoice_no']}")
@@ -480,6 +483,14 @@ def get_pdf_download_link_from_buffer(pdf_buffer, filename="invoice.pdf"):
 init_db()
 if not st.session_state['add_account']:
     st.session_state['add_account'] = next_account_no()
+
+# Helper to safely reset item-entry widget-managed keys and rerun
+def reset_item_entry_widgets_and_rerun():
+    # Remove keys so that on next run the widget will be re-initialized safely
+    for k in ("ie_new_metal", "ie_new_rate", "ie_new_wast", "ie_new_making", "ie_new_weight"):
+        if k in st.session_state:
+            del st.session_state[k]
+    st.rerun()
 
 # ------------- BASE SETTINGS TAB -------------
 if selected_tab == 0:
@@ -611,9 +622,9 @@ elif selected_tab == 2:
             st.session_state['ie_new_wast'] = None
             st.session_state['ie_new_making'] = None
             st.session_state['ie_new_weight'] = 0.0
-            st.session_state['ie_new_metal'] = "Select Item"
+            # SAFE RESET: delete widget-managed keys and rerun so widgets reinitialize cleanly
+            reset_item_entry_widgets_and_rerun()
             st.session_state['last_loaded_invoice'] = None
-            st.rerun()
 
     customers = get_customers_df()
     if "last_entry_tab" not in st.session_state or st.session_state.get("last_entry_tab") is None or st.session_state.get("last_entry_tab") != st.session_state.get("db_path", "customers.db"):
@@ -707,12 +718,12 @@ elif selected_tab == 2:
                             "line_total": float(line_total)
                         })
                         st.success("Item added.")
-                        st.session_state["ie_new_metal"] = "Select Item"
-                        st.session_state["ie_new_rate"] = None
-                        st.session_state["ie_new_wast"] = None
-                        st.session_state["ie_new_making"] = None
-                        st.session_state["ie_new_weight"] = 0.0
-                        st.experimental_rerun()
+                        # SAFE RESET: remove widget-managed keys then rerun so the selectbox resets safely
+                        for k in ("ie_new_rate","ie_new_wast","ie_new_making","ie_new_weight"):
+                            st.session_state.pop(k, None)
+                        # remove ie_new_metal (widget-managed) and rerun so it is re-created on next run
+                        st.session_state.pop("ie_new_metal", None)
+                        st.rerun()
 
             st.markdown("### Current Items")
             if st.session_state.get("invoice_items"):
@@ -772,11 +783,10 @@ elif selected_tab == 2:
                         st.session_state["invoice_items"] = []
                         st.session_state["current_customer"] = None
                         st.session_state["discount"] = 0.0
-                        st.session_state["ie_new_metal"] = "Select Item"
-                        st.session_state["ie_new_rate"] = None
-                        st.session_state["ie_new_wast"] = None
-                        st.session_state["ie_new_making"] = None
-                        st.session_state["ie_new_weight"] = 0.0
+                        # SAFE RESET: remove widget-managed keys so they are re-initialized next run
+                        for k in ("ie_new_rate","ie_new_wast","ie_new_making","ie_new_weight"):
+                            st.session_state.pop(k, None)
+                        st.session_state.pop("ie_new_metal", None)
                         st.rerun()
                     except Exception as e:
                         st.error(f"Failed to save invoice: {e}")
