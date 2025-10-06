@@ -14,18 +14,27 @@ import re
 import os
 
 # Hide Streamlit style elements
-hide_default_format = """
+# --- PAGE CONFIG ---
+st.set_page_config(
+    page_title="Invoice App",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# --- CLEAN UI (Hide Streamlit Branding, Keep Sidebar Toggle) ---
+hide_streamlit_style = """
     <style>
-    /* Hide GitHub, Menu, Status, Footer — but keep sidebar toggle working */
+    /* Hide top-right menu, status, and "Deploy" buttons */
     [data-testid="stToolbar"] {visibility: hidden !important;}
     [data-testid="stDecoration"] {visibility: hidden !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important;}
+
+    /* Hide footer (local or self-hosted only; Streamlit Cloud keeps its footer) */
     [data-testid="stFooter"] {visibility: hidden !important;}
     footer {visibility: hidden !important;}
-    /* Do NOT hide [data-testid="stHeader"] — that breaks sidebar toggle */
     </style>
 """
-st.markdown(hide_default_format, unsafe_allow_html=True)
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 
 # ---- UI THEME ----
