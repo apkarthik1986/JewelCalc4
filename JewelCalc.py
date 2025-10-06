@@ -13,6 +13,21 @@ from datetime import datetime
 import re
 import os
 
+import streamlit as st
+
+# Hide Streamlit style elements
+hide_streamlit_style = """
+    <style>
+    /* Hide top-right menu and GitHub link */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    /* Hide footer */
+    footer {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+
 # ---- UI THEME ----
 st.set_page_config(page_title="JewelCalc", page_icon="💎", layout="wide")
 st.markdown(
