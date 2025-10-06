@@ -14,16 +14,18 @@ import re
 import os
 
 # Hide Streamlit style elements
-hide_streamlit_style = """
+hide_default_format = """
     <style>
-    /* Hide top-right menu and GitHub link */
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    /* Hide footer */
-    footer {visibility: hidden;}
+    [data-testid="stToolbar"] {visibility: hidden !important;}
+    [data-testid="stDecoration"] {visibility: hidden !important;}
+    [data-testid="stStatusWidget"] {visibility: hidden !important;}
+    [data-testid="stHeader"] {visibility: hidden !important;}
+    [data-testid="stSidebarNav"] {visibility: visible !important;}
+    [data-testid="stFooter"] {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
     </style>
 """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+st.markdown(hide_default_format, unsafe_allow_html=True)
 
 
 # ---- UI THEME ----
