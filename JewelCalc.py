@@ -16,13 +16,13 @@ import os
 # Hide Streamlit style elements
 hide_default_format = """
     <style>
-    #[data-testid="stToolbar"] {visibility: hidden !important;}
-    #[data-testid="stDecoration"] {visibility: hidden !important;}
+    /* Hide GitHub, Menu, Status, Footer — but keep sidebar toggle working */
+    [data-testid="stToolbar"] {visibility: hidden !important;}
+    [data-testid="stDecoration"] {visibility: hidden !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important;}
-    [data-testid="stHeader"] {visibility: hidden !important;}
-    [data-testid="stSidebarNav"] {visibility: visible !important;}
     [data-testid="stFooter"] {visibility: hidden !important;}
     footer {visibility: hidden !important;}
+    /* Do NOT hide [data-testid="stHeader"] — that breaks sidebar toggle */
     </style>
 """
 st.markdown(hide_default_format, unsafe_allow_html=True)
