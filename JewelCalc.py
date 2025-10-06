@@ -16,8 +16,8 @@ import os
 # Hide Streamlit style elements
 hide_default_format = """
     <style>
-    [data-testid="stToolbar"] {visibility: hidden !important;}
-    [data-testid="stDecoration"] {visibility: hidden !important;}
+    #[data-testid="stToolbar"] {visibility: hidden !important;}
+    #[data-testid="stDecoration"] {visibility: hidden !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important;}
     [data-testid="stHeader"] {visibility: hidden !important;}
     [data-testid="stSidebarNav"] {visibility: visible !important;}
