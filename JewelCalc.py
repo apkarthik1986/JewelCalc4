@@ -29,7 +29,7 @@ st.markdown(hide_default_format, unsafe_allow_html=True)
 
 
 # ---- UI THEME ----
-st.set_page_config(page_title="JewelCalc", page_icon="💎", layout="wide")
+st.set_page_config(page_title="JewelCalc", page_icon="💎", layout="wide", initial_sidebar_state="expanded")
 st.markdown(
     """
     <style>
