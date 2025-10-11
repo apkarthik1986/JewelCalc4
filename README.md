@@ -1,6 +1,6 @@
 # JewelCalc
 
-**JewelCalc** is a Streamlit-based web application designed for jewelry shops to easily manage customer details, create and edit invoices with multiple metal items, apply taxes and discounts, and generate printable PDF bills—all in an intuitive, tabbed interface.
+**JewelCalc** is a Streamlit-based web application designed for jewellry shops to easily manage customer details, create and edit invoices with multiple metal items, apply taxes and discounts, and generate printable PDF bills—all in an intuitive, tabbed interface.
 
 ## Features
 
@@ -40,10 +40,6 @@
 - Open the app in your browser at `http://localhost:8501/`
 - Use the tabs at the top to set base values, manage customers, enter invoices, and view/export invoices.
 - The sidebar helps with database management and navigation.
-
-## Screenshots
-
-*(Add your screenshots here!)*
 
 ## License
 
