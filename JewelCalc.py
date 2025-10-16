@@ -19,10 +19,20 @@ st.set_page_config(page_title="JewelCalc", page_icon="💎", layout="wide", init
 
 hide_streamlit_style = """
     <style>
-    /* Hide top-right menu, status, and "Deploy" buttons */
+    /* Hide top-right menu and "Deploy" buttons */
     [data-testid="stToolbar"] {visibility: hidden !important;}
     [data-testid="stDecoration"] {visibility: hidden !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important;}
+
+    /* Keep sidebar collapse/expand buttons visible */
+    [data-testid="stSidebarCollapseButton"] {
+        visibility: visible !important;
+        z-index: 1003 !important;
+    }
+    [data-testid="stExpandSidebarButton"] {
+        visibility: visible !important;
+        z-index: 1003 !important;
+    }
 
     /* Hide footer (local or self-hosted only; Streamlit Cloud keeps its footer) */
     [data-testid="stFooter"] {visibility: hidden !important;}
@@ -42,7 +52,7 @@ st.markdown(
         top: 0;
         left: 0; right: 0;
         width: 100vw;
-        z-index: 1002;
+        z-index: 999;
         background: linear-gradient(90deg, #e0f7fa 0%, #f5f7fa 100%);
         padding: 18px 0 10px 0;
         font-size: 2.3rem;
@@ -60,7 +70,7 @@ st.markdown(
         top: 76px; /* pushed down so title is fully visible */
         left: 0; right: 0;
         width: 100vw;
-        z-index: 1001;
+        z-index: 998;
         background: linear-gradient(90deg,#f3e5f5 0%,#e1f5fe 100%);
         border-bottom: 2px solid #e1bee7;
         padding-bottom: 20px;
