@@ -139,7 +139,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     st.markdown(
-        f"<span style='font-size:1.03rem;color:#0277bd;'>Current DB:</span> <span style='font-size:1.03rem;background:#e1f5fe;border-radius:5px;padding:2px 12px;margin-left:4px;'>{current_db_file}</sp[...]
+        f"<span style='font-size:1.03rem;color:#0277bd;'>Current DB:</span> <span style='font-size:1.03rem;background:#e1f5fe;border-radius:5px;padding:2px 12px;margin-left:4px;'>{current_db_file}</span>",
         unsafe_allow_html=True,
     )
 
@@ -671,7 +671,7 @@ elif selected_tab == 2:
     if st.session_state.get("last_loaded_invoice"):
         load_inv = st.session_state["last_loaded_invoice"]
         invoice_row, items_df, _ = get_invoice_by_no(load_inv)
-        st.session_state["invoice_items"] = items_df[['metal','weight','rate','wastage_percent','making_percent','item_value','wastage_amount','making_amount','line_total']].fillna(0).to_dict('records[...]
+        st.session_state["invoice_items"] = items_df[['metal','weight','rate','wastage_percent','making_percent','item_value','wastage_amount','making_amount','line_total']].fillna(0).to_dict('records')
         st.session_state["current_customer"] = invoice_row["customer_id"]
         st.session_state["discount"] = float(invoice_row.get("discount", 0.0) or 0.0)
         st.session_state["last_loaded_invoice"] = None  # Only prefill once
