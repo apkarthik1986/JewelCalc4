@@ -14,14 +14,9 @@ import re
 import os
 
 # Hide Streamlit style elements
-# --- PAGE CONFIG ---
-st.set_page_config(
-    page_title="Invoice App",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# NOTE: Keep a single page_config call (duplicate calls can be ignored by Streamlit and cause confusion).
+st.set_page_config(page_title="JewelCalc", page_icon="💎", layout="wide", initial_sidebar_state="expanded")
 
-# --- CLEAN UI (Hide Streamlit Branding, Keep Sidebar Toggle) ---
 hide_streamlit_style = """
     <style>
     /* Hide top-right menu, status, and "Deploy" buttons */
@@ -38,7 +33,7 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 
 # ---- UI THEME ----
-st.set_page_config(page_title="JewelCalc", page_icon="💎", layout="wide", initial_sidebar_state="expanded")
+# Adjusted padding to ensure the fixed title is visible (avoid overlap with Streamlit's top area).
 st.markdown(
     """
     <style>
@@ -59,16 +54,17 @@ st.markdown(
         box-shadow: 0 4px 24px 0 #0002;
         font-family: 'Segoe UI', SegoeUI, "Helvetica Neue", Arial, sans-serif;
     }
+    /* Place tab bar under the title bar */
     .jewel-tab-bar-fixed {
         position: fixed;
-        top: 40px;
+        top: 76px; /* pushed down so title is fully visible */
         left: 0; right: 0;
         width: 100vw;
         z-index: 1001;
         background: linear-gradient(90deg,#f3e5f5 0%,#e1f5fe 100%);
         border-bottom: 2px solid #e1bee7;
-        padding-bottom: 20;
-        padding-top: 20px;      /* <-- Add this line */
+        padding-bottom: 20px;
+        padding-top: 20px;
         height: 64px;
         display: flex;
         justify-content: center;
@@ -97,8 +93,9 @@ st.markdown(
         border-bottom: 4px solid #43a047;
         box-shadow: 0px 4px 18px #e1bee7;
     }
-    .jewel-space {height:174px;}
-    .main .block-container {padding-top:0;}
+    /* Make sure page content doesn't get hidden behind the fixed header/tab bar */
+    .jewel-space {height:160px;}
+    .main .block-container {padding-top:160px;} /* ensure Streamlit content starts below title + tabs */
     </style>
     """,
     unsafe_allow_html=True,
@@ -142,7 +139,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     st.markdown(
-        f"<span style='font-size:1.03rem;color:#0277bd;'>Current DB:</span> <span style='font-size:1.03rem;background:#e1f5fe;border-radius:5px;padding:2px 12px;margin-left:4px;'>{current_db_file}</span>",
+        f"<span style='font-size:1.03rem;color:#0277bd;'>Current DB:</span> <span style='font-size:1.03rem;background:#e1f5fe;border-radius:5px;padding:2px 12px;margin-left:4px;'>{current_db_file}</sp[...]
         unsafe_allow_html=True,
     )
 
@@ -674,7 +671,7 @@ elif selected_tab == 2:
     if st.session_state.get("last_loaded_invoice"):
         load_inv = st.session_state["last_loaded_invoice"]
         invoice_row, items_df, _ = get_invoice_by_no(load_inv)
-        st.session_state["invoice_items"] = items_df[['metal','weight','rate','wastage_percent','making_percent','item_value','wastage_amount','making_amount','line_total']].fillna(0).to_dict('records')
+        st.session_state["invoice_items"] = items_df[['metal','weight','rate','wastage_percent','making_percent','item_value','wastage_amount','making_amount','line_total']].fillna(0).to_dict('records[...]
         st.session_state["current_customer"] = invoice_row["customer_id"]
         st.session_state["discount"] = float(invoice_row.get("discount", 0.0) or 0.0)
         st.session_state["last_loaded_invoice"] = None  # Only prefill once
