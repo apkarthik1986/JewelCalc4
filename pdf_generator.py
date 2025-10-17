@@ -144,16 +144,16 @@ def create_thermal_invoice_pdf(invoice, items_df, customer):
     
     # Summary section
     y_tracking += 5 + 12  # Line + Subtotal
-    y_tracking += 11  # Each tax line
     if invoice.get('discount_percent', 0) > 0:
-        y_tracking += 11
+        y_tracking += 11  # Discount line
     y_tracking += 11  # CGST
     y_tracking += 11  # SGST
     y_tracking += 13 + 13  # Line + Total
     y_tracking += 20  # Thank you message
     
-    # Add some padding at the end
-    page_height = y_tracking + 20
+    # Add bottom padding
+    BOTTOM_PADDING = 20
+    page_height = y_tracking + BOTTOM_PADDING
     
     c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
     x_margin = 10
@@ -193,7 +193,6 @@ def create_thermal_invoice_pdf(invoice, items_df, customer):
     c.drawString(x_margin, y, "Item Details")
     y -= 12
     
-    c.setFont("Helvetica", 7)
     for _, row in items_df.iterrows():
         c.setFont("Helvetica-Bold", 7)
         c.drawString(x_margin, y, f"{int(row['item_no'])}. {row['metal']}")
@@ -210,7 +209,6 @@ def create_thermal_invoice_pdf(invoice, items_df, customer):
         c.setFont("Helvetica-Bold", 7)
         c.drawString(x_margin + 5, y, f"Line Total: ₹{row['line_total']:.2f}")
         y -= 12
-        c.setFont("Helvetica", 7)
     
     y -= 5
     c.line(x_margin, y, page_width - x_margin, y)
