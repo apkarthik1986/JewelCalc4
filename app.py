@@ -74,11 +74,11 @@ def get_device_id():
     try:
         # Get system information to create a unique device ID
         system_info = f"{platform.node()}-{platform.system()}-{platform.machine()}"
-        # Create a hash of the system info
+        # Create a hash of the system info (MD5 is sufficient for non-cryptographic device ID)
         device_hash = hashlib.md5(system_info.encode()).hexdigest()[:8]
         return device_hash
-    except:
-        # Fallback to a simple identifier
+    except Exception:
+        # Fallback to a simple identifier if system info is unavailable
         return "default"
 
 
@@ -139,7 +139,9 @@ with st.sidebar:
     with st.expander("⚙️ Database Operations", expanded=False):
         # Change database
         st.markdown("**Switch Database**")
-        new_db = st.text_input("Database filename", value=st.session_state.db_path, help="Enter a .db filename to switch databases")
+        st.info("💡 By default, each device uses its own database. You can switch to a shared database if needed.")
+        new_db = st.text_input("Database filename", value=st.session_state.db_path, 
+                               help="Enter a .db filename. Use device-specific name for local storage or a common name to share data.")
         if st.button("Switch Database"):
             if new_db.endswith('.db'):
                 st.session_state.db_path = new_db
