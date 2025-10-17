@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 from database import Database
 from utils import format_currency, generate_invoice_number, generate_account_number, validate_phone, calculate_item_totals
-from pdf_generator import create_invoice_pdf, get_pdf_download_link
+from pdf_generator import create_invoice_pdf, get_pdf_download_link, create_thermal_invoice_pdf
 import os
 
 
@@ -100,16 +100,58 @@ st.markdown('<div class="main-header"><h1>💎 JewelCalc</h1></div>', unsafe_all
 # Sidebar - Database Management
 with st.sidebar:
     st.markdown("### 🗄️ Database Management")
-    st.info(f"Current DB: `{st.session_state.db_path}`")
     
-    with st.expander("Change Database"):
-        new_db = st.text_input("Database filename", value="jewelcalc.db")
-        if st.button("Switch Database"):
-            if new_db.endswith('.db'):
-                st.session_state.db_path = new_db
-                st.rerun()
-            else:
-                st.error("Database filename must end with .db")
+    # Toggle for showing/hiding database section
+    if 'show_db_management' not in st.session_state:
+        st.session_state.show_db_management = True
+    
+    if st.button("🔽 Toggle Database Panel" if st.session_state.show_db_management else "▶️ Toggle Database Panel"):
+        st.session_state.show_db_management = not st.session_state.show_db_management
+        st.rerun()
+    
+    if st.session_state.show_db_management:
+        st.info(f"Current DB: `{st.session_state.db_path}`")
+        
+        with st.expander("⚙️ Database Operations"):
+            # Change database
+            st.markdown("**Switch Database**")
+            new_db = st.text_input("Database filename", value="jewelcalc.db")
+            if st.button("Switch Database"):
+                if new_db.endswith('.db'):
+                    st.session_state.db_path = new_db
+                    st.rerun()
+                else:
+                    st.error("Database filename must end with .db")
+            
+            st.markdown("---")
+            
+            # Export/Import Database
+            st.markdown("**Backup & Restore**")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("💾 Backup DB"):
+                    import shutil
+                    from datetime import datetime
+                    backup_name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                    db.export_database(backup_name)
+                    st.success(f"Backup saved: {backup_name}")
+            
+            with col2:
+                restore_file = st.file_uploader("📂 Restore DB", type=['db'], key="db_restore")
+                if restore_file is not None:
+                    import tempfile
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:
+                        tmp_file.write(restore_file.read())
+                        tmp_path = tmp_file.name
+                    
+                    if st.button("Confirm Restore"):
+                        try:
+                            db.import_database(tmp_path)
+                            st.success("Database restored successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
 
 # Main tabs
 tab1, tab2, tab3, tab4 = st.tabs(["⚙️ Settings", "👥 Customers", "📝 Create Invoice", "📋 View Invoices"])
@@ -258,6 +300,35 @@ with tab2:
                     db.delete_customer(customer_id)
                     st.success("✅ Customer deleted successfully!")
                     st.rerun()
+    
+    # Import/Export Customers
+    st.markdown("---")
+    st.markdown("#### Import/Export Customers")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📥 Export Customers (CSV)"):
+            csv_data = db.export_customers_csv()
+            st.download_button(
+                label="💾 Download CSV",
+                data=csv_data,
+                file_name="customers_export.csv",
+                mime="text/csv"
+            )
+    
+    with col2:
+        uploaded_customers = st.file_uploader("📤 Import Customers (CSV)", type=['csv'], key="import_customers")
+        if uploaded_customers is not None:
+            csv_content = uploaded_customers.read().decode('utf-8')
+            if st.button("Confirm Import Customers"):
+                imported, errors = db.import_customers_csv(csv_content)
+                if imported > 0:
+                    st.success(f"✅ Imported {imported} customers")
+                if errors:
+                    st.warning(f"⚠️ {len(errors)} errors occurred")
+                    for error in errors[:5]:  # Show first 5 errors
+                        st.error(error)
+                st.rerun()
     
     # Show all customers
     st.markdown("#### All Customers")
@@ -436,6 +507,36 @@ with tab4:
     if invoices_df.empty:
         st.info("No invoices yet. Create your first invoice in the Create Invoice tab!")
     else:
+        # Import/Export Invoices
+        st.markdown("#### Import/Export Invoices")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("📥 Export All Invoices (JSON)"):
+                json_data = db.export_invoices_json()
+                st.download_button(
+                    label="💾 Download JSON",
+                    data=json_data,
+                    file_name="invoices_export.json",
+                    mime="application/json"
+                )
+        
+        with col2:
+            uploaded_invoices = st.file_uploader("📤 Import Invoices (JSON)", type=['json'], key="import_invoices")
+            if uploaded_invoices is not None:
+                json_content = uploaded_invoices.read().decode('utf-8')
+                if st.button("Confirm Import Invoices"):
+                    imported, errors = db.import_invoices_json(json_content)
+                    if imported > 0:
+                        st.success(f"✅ Imported {imported} invoices")
+                    if errors:
+                        st.warning(f"⚠️ {len(errors)} errors occurred")
+                        for error in errors[:5]:
+                            st.error(error)
+                    st.rerun()
+        
+        st.markdown("---")
+        
         # Search
         search = st.text_input("🔍 Search invoices", "")
         if search:
@@ -490,10 +591,159 @@ with tab4:
                     st.markdown(f"**SGST ({invoice['sgst_percent']}%):** {format_currency(invoice['sgst_amount'])}")
                     st.markdown(f"### **Total:** {format_currency(invoice['total'])}")
                 
-                # PDF download
-                if st.button(f"📄 Download PDF", key=f"pdf_{row['invoice_no']}"):
+                st.markdown("---")
+                
+                # Action buttons
+                col1, col2, col3, col4 = st.columns(4)
+                
+                # PDF download (direct download)
+                with col1:
                     pdf_buffer = create_invoice_pdf(invoice, items_df, customer)
-                    st.markdown(
-                        get_pdf_download_link(pdf_buffer, f"{row['invoice_no']}.pdf"),
-                        unsafe_allow_html=True
+                    st.download_button(
+                        label="📄 Download PDF",
+                        data=pdf_buffer,
+                        file_name=f"{row['invoice_no']}.pdf",
+                        mime="application/pdf",
+                        key=f"dl_{row['invoice_no']}"
                     )
+                
+                # Print PDF (opens in new tab for printing)
+                with col2:
+                    pdf_buffer_print = create_invoice_pdf(invoice, items_df, customer)
+                    import base64
+                    b64 = base64.b64encode(pdf_buffer_print.read()).decode()
+                    href = f'<a href="data:application/pdf;base64,{b64}" target="_blank">🖨️ Print PDF</a>'
+                    st.markdown(href, unsafe_allow_html=True)
+                
+                # Thermal print
+                with col3:
+                    from pdf_generator import create_thermal_invoice_pdf
+                    thermal_buffer = create_thermal_invoice_pdf(invoice, items_df, customer)
+                    st.download_button(
+                        label="🧾 Thermal Print",
+                        data=thermal_buffer,
+                        file_name=f"{row['invoice_no']}_thermal.pdf",
+                        mime="application/pdf",
+                        key=f"thermal_{row['invoice_no']}"
+                    )
+                
+                # Edit invoice button
+                with col4:
+                    if st.button("✏️ Edit Invoice", key=f"edit_{row['invoice_no']}"):
+                        st.session_state.editing_invoice_id = invoice['id']
+                        st.session_state.editing_invoice_no = row['invoice_no']
+                        st.rerun()
+                
+                # Edit invoice form
+                if st.session_state.get('editing_invoice_id') == invoice['id']:
+                    st.markdown("---")
+                    st.markdown("### ✏️ Edit Invoice")
+                    
+                    # Load items into editable list
+                    edit_items = []
+                    for _, item in items_df.iterrows():
+                        edit_items.append({
+                            'metal': item['metal'],
+                            'weight': float(item['weight']),
+                            'rate': float(item['rate']),
+                            'wastage_percent': float(item['wastage_percent']),
+                            'making_percent': float(item['making_percent']),
+                            'item_value': float(item['item_value']),
+                            'wastage_amount': float(item['wastage_amount']),
+                            'making_amount': float(item['making_amount']),
+                            'line_total': float(item['line_total'])
+                        })
+                    
+                    # Display editable items
+                    st.markdown("**Current Items:**")
+                    items_edit_display = []
+                    for i, item in enumerate(edit_items):
+                        items_edit_display.append({
+                            'No.': i + 1,
+                            'Metal': item['metal'],
+                            'Weight': f"{item['weight']:.3f}g",
+                            'Rate': format_currency(item['rate']),
+                            'Total': format_currency(item['line_total'])
+                        })
+                    st.dataframe(pd.DataFrame(items_edit_display), use_container_width=True, hide_index=True)
+                    
+                    # Add new item to edit
+                    st.markdown("**Add/Modify Items:**")
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        edit_metal = st.selectbox("Metal", options=list(st.session_state.metal_settings.keys()), key=f"edit_metal_{invoice['id']}")
+                    
+                    with col2:
+                        edit_weight = st.number_input("Weight (g)", min_value=0.0, format="%.3f", key=f"edit_weight_{invoice['id']}")
+                    
+                    edit_settings = st.session_state.metal_settings[edit_metal]
+                    
+                    with col3:
+                        edit_rate = st.number_input("Rate/g", value=edit_settings['rate'], format="%.2f", key=f"edit_rate_{invoice['id']}")
+                    
+                    with col4:
+                        edit_wastage = st.number_input("Wastage %", value=edit_settings['wastage'], format="%.2f", key=f"edit_wastage_{invoice['id']}")
+                    
+                    edit_making = st.number_input("Making %", value=edit_settings['making'], format="%.2f", key=f"edit_making_{invoice['id']}")
+                    
+                    if st.button("➕ Add Item", key=f"add_edit_item_{invoice['id']}"):
+                        if edit_weight > 0:
+                            totals = calculate_item_totals(edit_weight, edit_rate, edit_wastage, edit_making)
+                            edit_items.append({
+                                'metal': edit_metal,
+                                'weight': edit_weight,
+                                'rate': edit_rate,
+                                'wastage_percent': edit_wastage,
+                                'making_percent': edit_making,
+                                'item_value': totals['item_value'],
+                                'wastage_amount': totals['wastage_amount'],
+                                'making_amount': totals['making_amount'],
+                                'line_total': totals['line_total']
+                            })
+                            st.session_state.temp_edit_items = edit_items
+                            st.rerun()
+                    
+                    if st.button("🗑️ Remove Last Item", key=f"remove_edit_item_{invoice['id']}"):
+                        if edit_items:
+                            edit_items.pop()
+                            st.session_state.temp_edit_items = edit_items
+                            st.rerun()
+                    
+                    # Update discount
+                    edit_discount = st.number_input(
+                        "Discount %", 
+                        min_value=0.0, 
+                        value=float(invoice['discount_percent']), 
+                        format="%.2f",
+                        key=f"edit_discount_{invoice['id']}"
+                    )
+                    
+                    # Save changes
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("💾 Save Changes", key=f"save_edit_{invoice['id']}"):
+                            try:
+                                db.update_invoice(
+                                    invoice['id'],
+                                    edit_items,
+                                    invoice['cgst_percent'],
+                                    invoice['sgst_percent'],
+                                    edit_discount
+                                )
+                                st.success("✅ Invoice updated successfully!")
+                                del st.session_state.editing_invoice_id
+                                del st.session_state.editing_invoice_no
+                                if 'temp_edit_items' in st.session_state:
+                                    del st.session_state.temp_edit_items
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error updating invoice: {str(e)}")
+                    
+                    with col2:
+                        if st.button("❌ Cancel Edit", key=f"cancel_edit_{invoice['id']}"):
+                            del st.session_state.editing_invoice_id
+                            del st.session_state.editing_invoice_no
+                            if 'temp_edit_items' in st.session_state:
+                                del st.session_state.temp_edit_items
+                            st.rerun()

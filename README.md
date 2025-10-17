@@ -7,10 +7,15 @@
 - **🎨 Clean Modern UI:** Intuitive tabbed interface with beautiful styling
 - **👥 Customer Management:** Add, edit, search, and delete customer records with automatic account numbering
 - **📝 Invoice Creation:** Create invoices with multiple items (metal type, weight, rate, wastage, making charges)
+- **✏️ Invoice Editing:** Edit existing invoices, add/remove items, modify discounts
 - **💰 Tax & Discount Support:** Built-in CGST and SGST calculation with discount options
-- **📄 PDF Export:** Generate and download professional PDF invoices
-- **🗄️ Database Management:** SQLite backend with easy database switching
+- **📄 PDF Export:** Generate and download professional PDF invoices with direct download
+- **🖨️ Print Support:** Print PDFs directly from browser with optimized layouts
+- **🧾 Thermal Printing:** Special thermal printer format (80mm width) for receipt printers
+- **📥📤 Import/Export:** Export customers (CSV) and invoices (JSON) for backup and transfer
+- **🗄️ Database Management:** SQLite backend with easy switching, backup, and restore
 - **⚙️ Configurable Settings:** Customize metal rates, wastage, and making charges
+- **🔐 Local Storage:** All data stored locally on your PC/mobile, not in the cloud
 
 ## Project Structure
 
@@ -53,9 +58,19 @@ JewelCalc1/
 ## Usage
 
 1. **Settings Tab:** Configure metal rates, wastage percentages, making charges, and tax rates
-2. **Customers Tab:** Add and manage customer information
+2. **Customers Tab:** Add and manage customer information, import/export customer data
 3. **Create Invoice Tab:** Select a customer, add items, and save invoices
-4. **View Invoices Tab:** Browse, search, and download invoice PDFs
+4. **View Invoices Tab:** Browse, search, edit, and download invoice PDFs (regular/thermal print)
+
+## New Features
+
+See [FEATURES.md](FEATURES.md) for detailed documentation on:
+- Direct PDF download and print functionality
+- Thermal printer support
+- Invoice editing
+- Customer and invoice import/export
+- Database backup and restore
+- And more!
 
 ## Database
 

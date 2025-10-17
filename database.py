@@ -2,6 +2,9 @@
 import sqlite3
 import pandas as pd
 from datetime import datetime
+import json
+import csv
+from io import StringIO
 
 
 class Database:
@@ -237,3 +240,183 @@ class Database:
         
         conn.close()
         return invoice, items_df, customer
+    
+    def update_invoice(self, invoice_id, items, cgst_percent, sgst_percent, discount_percent=0):
+        """Update an existing invoice"""
+        if not items:
+            raise ValueError("Invoice must have at least one item")
+        
+        # Calculate totals
+        subtotal = sum(item['line_total'] for item in items)
+        discount_amount = subtotal * (discount_percent / 100)
+        taxable_amount = subtotal - discount_amount
+        cgst_amount = taxable_amount * (cgst_percent / 100)
+        sgst_amount = taxable_amount * (sgst_percent / 100)
+        total = taxable_amount + cgst_amount + sgst_amount
+        
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # Update invoice
+        cursor.execute('''
+            UPDATE invoices SET
+                subtotal=?, cgst_percent=?, sgst_percent=?,
+                cgst_amount=?, sgst_amount=?, discount_percent=?, discount_amount=?, total=?
+            WHERE id=?
+        ''', (
+            subtotal, cgst_percent, sgst_percent, cgst_amount, sgst_amount,
+            discount_percent, discount_amount, total, invoice_id
+        ))
+        
+        # Delete existing items
+        cursor.execute('DELETE FROM invoice_items WHERE invoice_id=?', (invoice_id,))
+        
+        # Insert new items
+        for idx, item in enumerate(items, start=1):
+            cursor.execute('''
+                INSERT INTO invoice_items (
+                    invoice_id, item_no, metal, weight, rate, wastage_percent,
+                    making_percent, item_value, wastage_amount, making_amount, line_total
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                invoice_id, idx, item['metal'], item['weight'], item['rate'],
+                item['wastage_percent'], item['making_percent'], item['item_value'],
+                item['wastage_amount'], item['making_amount'], item['line_total']
+            ))
+        
+        conn.commit()
+        conn.close()
+    
+    # Import/Export operations
+    def export_customers_csv(self):
+        """Export customers to CSV format"""
+        conn = self.get_connection()
+        df = pd.read_sql_query('SELECT * FROM customers', conn)
+        conn.close()
+        return df.to_csv(index=False)
+    
+    def import_customers_csv(self, csv_content):
+        """Import customers from CSV content"""
+        df = pd.read_csv(StringIO(csv_content))
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        imported = 0
+        errors = []
+        
+        for _, row in df.iterrows():
+            try:
+                cursor.execute(
+                    'INSERT INTO customers (account_no, name, phone, address) VALUES (?, ?, ?, ?)',
+                    (row.get('account_no', ''), row.get('name', ''), 
+                     row.get('phone', ''), row.get('address', ''))
+                )
+                imported += 1
+            except sqlite3.IntegrityError as e:
+                errors.append(f"Row {_ + 1}: {str(e)}")
+        
+        conn.commit()
+        conn.close()
+        return imported, errors
+    
+    def export_invoices_json(self):
+        """Export all invoices with items to JSON format"""
+        conn = self.get_connection()
+        
+        # Get all invoices
+        invoices_df = pd.read_sql_query('SELECT * FROM invoices', conn)
+        
+        export_data = []
+        for _, invoice_row in invoices_df.iterrows():
+            invoice_dict = invoice_row.to_dict()
+            
+            # Get items for this invoice
+            items_df = pd.read_sql_query(
+                'SELECT * FROM invoice_items WHERE invoice_id = ?',
+                conn,
+                params=(invoice_dict['id'],)
+            )
+            invoice_dict['items'] = items_df.to_dict('records')
+            
+            # Get customer info
+            customer_df = pd.read_sql_query(
+                'SELECT * FROM customers WHERE id = ?',
+                conn,
+                params=(invoice_dict['customer_id'],)
+            )
+            if not customer_df.empty:
+                invoice_dict['customer'] = customer_df.iloc[0].to_dict()
+            
+            export_data.append(invoice_dict)
+        
+        conn.close()
+        return json.dumps(export_data, indent=2, default=str)
+    
+    def import_invoices_json(self, json_content):
+        """Import invoices from JSON content"""
+        data = json.loads(json_content)
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        imported = 0
+        errors = []
+        
+        for idx, invoice_data in enumerate(data):
+            try:
+                # Check if customer exists
+                customer_id = invoice_data.get('customer_id')
+                cursor.execute('SELECT id FROM customers WHERE id = ?', (customer_id,))
+                if not cursor.fetchone():
+                    errors.append(f"Invoice {idx + 1}: Customer ID {customer_id} not found")
+                    continue
+                
+                # Insert invoice
+                cursor.execute('''
+                    INSERT INTO invoices (
+                        invoice_no, customer_id, date, subtotal, cgst_percent, sgst_percent,
+                        cgst_amount, sgst_amount, discount_percent, discount_amount, total
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    invoice_data['invoice_no'], customer_id, invoice_data['date'],
+                    invoice_data['subtotal'], invoice_data['cgst_percent'], 
+                    invoice_data['sgst_percent'], invoice_data['cgst_amount'], 
+                    invoice_data['sgst_amount'], invoice_data.get('discount_percent', 0),
+                    invoice_data.get('discount_amount', 0), invoice_data['total']
+                ))
+                
+                invoice_id = cursor.lastrowid
+                
+                # Insert items
+                for item in invoice_data.get('items', []):
+                    cursor.execute('''
+                        INSERT INTO invoice_items (
+                            invoice_id, item_no, metal, weight, rate, wastage_percent,
+                            making_percent, item_value, wastage_amount, making_amount, line_total
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        invoice_id, item['item_no'], item['metal'], item['weight'],
+                        item['rate'], item['wastage_percent'], item['making_percent'],
+                        item['item_value'], item['wastage_amount'], item['making_amount'],
+                        item['line_total']
+                    ))
+                
+                imported += 1
+            except Exception as e:
+                errors.append(f"Invoice {idx + 1}: {str(e)}")
+        
+        conn.commit()
+        conn.close()
+        return imported, errors
+    
+    def export_database(self, target_path):
+        """Export entire database to another file"""
+        import shutil
+        shutil.copy2(self.db_path, target_path)
+        return True
+    
+    def import_database(self, source_path):
+        """Import database from another file"""
+        import shutil
+        shutil.copy2(source_path, self.db_path)
+        self._init_database()  # Ensure tables exist
+        return True
