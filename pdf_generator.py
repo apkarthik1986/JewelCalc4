@@ -109,11 +109,51 @@ def get_pdf_download_link(pdf_buffer, filename="invoice.pdf"):
 
 
 def create_thermal_invoice_pdf(invoice, items_df, customer):
-    """Generate thermal printer optimized PDF (80mm width)"""
+    """Generate thermal printer optimized PDF (80mm width) with enhanced details"""
     buffer = BytesIO()
     # Thermal printer paper is typically 80mm (about 226 points)
     page_width = 226
-    page_height = 800  # Adjustable height
+    
+    # First, calculate required height
+    y_tracking = 20  # Start from top
+    line_height = 11  # Standard line height
+    
+    # Title
+    y_tracking += 18
+    # Invoice details
+    y_tracking += 12 + 12  # Invoice no + Date
+    y_tracking += 15
+    # Customer details
+    if customer:
+        y_tracking += 11  # Account
+        y_tracking += 11  # Name
+        y_tracking += 11  # Phone
+        if customer.get('address'):
+            y_tracking += 11  # Address
+    y_tracking += 5 + 12  # Line + Item Details header
+    
+    # Items
+    for _, row in items_df.iterrows():
+        y_tracking += 10  # Item number and metal
+        y_tracking += 10  # Weight and rate
+        y_tracking += 10  # Item value
+        y_tracking += 10  # Wastage
+        y_tracking += 10  # Making
+        y_tracking += 10  # Line total
+        y_tracking += 12  # Spacing
+    
+    # Summary section
+    y_tracking += 5 + 12  # Line + Subtotal
+    y_tracking += 11  # Each tax line
+    if invoice.get('discount_percent', 0) > 0:
+        y_tracking += 11
+    y_tracking += 11  # CGST
+    y_tracking += 11  # SGST
+    y_tracking += 13 + 13  # Line + Total
+    y_tracking += 20  # Thank you message
+    
+    # Add some padding at the end
+    page_height = y_tracking + 20
     
     c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
     x_margin = 10
@@ -140,31 +180,37 @@ def create_thermal_invoice_pdf(invoice, items_df, customer):
         y -= 11
         c.drawString(x_margin, y, f"Ph: {customer.get('phone', '')}")
         y -= 11
+        if customer.get('address'):
+            c.drawString(x_margin, y, f"Addr: {customer.get('address', '')}")
+            y -= 11
     
     y -= 5
     c.line(x_margin, y, page_width - x_margin, y)
     y -= 12
     
-    # Items - simplified for thermal
+    # Items - enhanced with more details
     c.setFont("Helvetica-Bold", 8)
     c.drawString(x_margin, y, "Item Details")
     y -= 12
     
     c.setFont("Helvetica", 7)
     for _, row in items_df.iterrows():
-        if y < 40:
-            c.showPage()
-            y = page_height - 20
-            c.setFont("Helvetica", 7)
-        
+        c.setFont("Helvetica-Bold", 7)
         c.drawString(x_margin, y, f"{int(row['item_no'])}. {row['metal']}")
         y -= 10
-        c.drawString(x_margin + 5, y, f"Wt: {row['weight']:.2f}g @ ₹{row['rate']:.2f}")
+        c.setFont("Helvetica", 7)
+        c.drawString(x_margin + 5, y, f"Weight: {row['weight']:.3f}g @ ₹{row['rate']:.2f}/g")
         y -= 10
-        c.drawString(x_margin + 5, y, f"Value: ₹{row['item_value']:.2f}")
+        c.drawString(x_margin + 5, y, f"Item Value: ₹{row['item_value']:.2f}")
         y -= 10
-        c.drawRightString(page_width - x_margin, y, f"Total: ₹{row['line_total']:.2f}")
+        c.drawString(x_margin + 5, y, f"Wastage ({row['wastage_percent']:.1f}%): ₹{row['wastage_amount']:.2f}")
+        y -= 10
+        c.drawString(x_margin + 5, y, f"Making ({row['making_percent']:.1f}%): ₹{row['making_amount']:.2f}")
+        y -= 10
+        c.setFont("Helvetica-Bold", 7)
+        c.drawString(x_margin + 5, y, f"Line Total: ₹{row['line_total']:.2f}")
         y -= 12
+        c.setFont("Helvetica", 7)
     
     y -= 5
     c.line(x_margin, y, page_width - x_margin, y)
@@ -177,10 +223,12 @@ def create_thermal_invoice_pdf(invoice, items_df, customer):
     y -= 11
     
     if invoice.get('discount_percent', 0) > 0:
+        c.setFont("Helvetica", 8)
         c.drawString(x_margin, y, f"Discount ({invoice['discount_percent']:.1f}%):")
-        c.drawRightString(page_width - x_margin, y, f"₹{invoice['discount_amount']:.2f}")
+        c.drawRightString(page_width - x_margin, y, f"-₹{invoice['discount_amount']:.2f}")
         y -= 11
     
+    c.setFont("Helvetica", 8)
     c.drawString(x_margin, y, f"CGST ({invoice['cgst_percent']:.1f}%):")
     c.drawRightString(page_width - x_margin, y, f"₹{invoice['cgst_amount']:.2f}")
     y -= 11
@@ -199,6 +247,7 @@ def create_thermal_invoice_pdf(invoice, items_df, customer):
     c.setFont("Helvetica", 7)
     c.drawCentredString(center, y, "Thank you for your business!")
     
+    # End PDF here - don't add more pages
     c.showPage()
     c.save()
     buffer.seek(0)
