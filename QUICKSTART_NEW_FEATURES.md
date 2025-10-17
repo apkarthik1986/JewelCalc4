@@ -27,7 +27,7 @@ This guide helps you quickly get started with JewelCalc's new features.
 1. Open the **sidebar**
 2. Expand **Database Operations**
 3. Click **💾 Backup DB**
-4. Your backup is saved with timestamp (e.g., `backup_20241017_165000.db`)
+4. Your backup is saved with timestamp (e.g., `backup_YYYYMMDD_HHMMSS.db`)
 
 ### Export Customers
 
@@ -39,7 +39,12 @@ This guide helps you quickly get started with JewelCalc's new features.
 
 ### Import Customers
 
-1. Prepare a CSV file with columns: `account_no`, `name`, `phone`, `address`
+1. Prepare a CSV file with these exact column headers (first row): `account_no,name,phone,address`
+   Example format:
+   ```
+   account_no,name,phone,address
+   CUS-00001,John Doe,1234567890,123 Main St
+   ```
 2. Go to **Customers** tab
 3. Click **📤 Import Customers (CSV)**
 4. Choose your CSV file
