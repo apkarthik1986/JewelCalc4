@@ -127,7 +127,7 @@ JewelCalc1/
 |--------|--------|-------|--------|
 | Total Lines | 874 | 902 | +3% |
 | Files | 1 | 4 | +300% |
-| Avg Lines/File | 874 | 226 | -74% |
+| Avg Lines/File | 874 | 225 | -74% |
 | Functions | ~30 | 25 | -17% |
 | Classes | 0 | 1 | New |
 | Documentation Files | 1 | 4 | +300% |
