@@ -143,11 +143,12 @@ with st.sidebar:
         new_db = st.text_input("Database filename", value=st.session_state.db_path, 
                                help="Enter a .db filename. Use device-specific name for local storage or a common name to share data.")
         if st.button("Switch Database"):
-            if new_db.endswith('.db'):
+            # Validate database filename to prevent path traversal
+            if new_db.endswith('.db') and os.path.basename(new_db) == new_db and '/' not in new_db and '\\' not in new_db:
                 st.session_state.db_path = new_db
                 st.rerun()
             else:
-                st.error("Database filename must end with .db")
+                st.error("Database filename must end with .db and contain no path separators")
         
         st.markdown("---")
         
@@ -250,9 +251,10 @@ with tab1:
             with col_a:
                 if st.button("✅ YES, DELETE EVERYTHING", type="primary"):
                     try:
-                        # Delete the database file
-                        if os.path.exists(st.session_state.db_path):
-                            os.remove(st.session_state.db_path)
+                        # Delete the database file (validate it's in current directory)
+                        db_path = st.session_state.db_path
+                        if os.path.basename(db_path) == db_path and os.path.exists(db_path):
+                            os.remove(db_path)
                         
                         # Reset session state to defaults
                         st.session_state.metal_settings = {
