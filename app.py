@@ -8,6 +8,8 @@ from database import Database
 from utils import format_currency, generate_invoice_number, generate_account_number, validate_phone, calculate_item_totals
 from pdf_generator import create_invoice_pdf, get_pdf_download_link, create_thermal_invoice_pdf
 import os
+import hashlib
+import platform
 
 
 # Page configuration
@@ -67,11 +69,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+def get_device_id():
+    """Generate a unique device identifier based on system information"""
+    try:
+        # Get system information to create a unique device ID
+        system_info = f"{platform.node()}-{platform.system()}-{platform.machine()}"
+        # Create a hash of the system info (MD5 is sufficient for non-cryptographic device ID)
+        device_hash = hashlib.md5(system_info.encode()).hexdigest()[:8]
+        return device_hash
+    except Exception:
+        # Fallback to a simple identifier if system info is unavailable
+        return "default"
+
+
+def get_device_specific_db_path():
+    """Get device-specific database path to ensure local storage per device"""
+    device_id = get_device_id()
+    return f"jewelcalc_{device_id}.db"
+
+
 # Initialize session state
 def init_session_state():
     """Initialize session state variables"""
     if 'db_path' not in st.session_state:
-        st.session_state.db_path = 'jewelcalc.db'
+        # Use device-specific database path for local storage
+        st.session_state.db_path = get_device_specific_db_path()
     
     if 'metal_settings' not in st.session_state:
         st.session_state.metal_settings = {
@@ -109,57 +131,54 @@ st.markdown('<div class="main-header"><h1>💎 JewelCalc</h1></div>', unsafe_all
 with st.sidebar:
     st.markdown("### 🗄️ Database Management")
     
-    # Toggle for showing/hiding database section
-    if 'show_db_management' not in st.session_state:
-        st.session_state.show_db_management = True
+    # Show current database with device identifier
+    device_id = get_device_id()
+    st.info(f"📱 Device ID: `{device_id}`")
+    st.info(f"💾 Current DB: `{st.session_state.db_path}`")
     
-    if st.button("🔽 Toggle Database Panel" if st.session_state.show_db_management else "▶️ Toggle Database Panel"):
-        st.session_state.show_db_management = not st.session_state.show_db_management
-        st.rerun()
-    
-    if st.session_state.show_db_management:
-        st.info(f"Current DB: `{st.session_state.db_path}`")
+    with st.expander("⚙️ Database Operations", expanded=False):
+        # Change database
+        st.markdown("**Switch Database**")
+        st.info("💡 By default, each device uses its own database. You can switch to a shared database if needed.")
+        new_db = st.text_input("Database filename", value=st.session_state.db_path, 
+                               help="Enter a .db filename. Use device-specific name for local storage or a common name to share data.")
+        if st.button("Switch Database"):
+            # Validate database filename to prevent path traversal
+            if new_db.endswith('.db') and os.path.basename(new_db) == new_db and '/' not in new_db and '\\' not in new_db:
+                st.session_state.db_path = new_db
+                st.rerun()
+            else:
+                st.error("Database filename must end with .db and contain no path separators")
         
-        with st.expander("⚙️ Database Operations"):
-            # Change database
-            st.markdown("**Switch Database**")
-            new_db = st.text_input("Database filename", value="jewelcalc.db")
-            if st.button("Switch Database"):
-                if new_db.endswith('.db'):
-                    st.session_state.db_path = new_db
-                    st.rerun()
-                else:
-                    st.error("Database filename must end with .db")
-            
-            st.markdown("---")
-            
-            # Export/Import Database
-            st.markdown("**Backup & Restore**")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("💾 Backup DB"):
-                    import shutil
-                    from datetime import datetime
-                    backup_name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-                    db.export_database(backup_name)
-                    st.success(f"Backup saved: {backup_name}")
-            
-            with col2:
-                restore_file = st.file_uploader("📂 Restore DB", type=['db'], key="db_restore")
-                if restore_file is not None:
-                    import tempfile
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:
-                        tmp_file.write(restore_file.read())
-                        tmp_path = tmp_file.name
-                    
-                    if st.button("Confirm Restore"):
-                        try:
-                            db.import_database(tmp_path)
-                            st.success("Database restored successfully!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {str(e)}")
+        st.markdown("---")
+        
+        # Export/Import Database
+        st.markdown("**Backup & Restore**")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Backup DB"):
+                import shutil
+                from datetime import datetime
+                backup_name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                db.export_database(backup_name)
+                st.success(f"Backup saved: {backup_name}")
+        
+        with col2:
+            restore_file = st.file_uploader("📂 Restore DB", type=['db'], key="db_restore")
+            if restore_file is not None:
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:
+                    tmp_file.write(restore_file.read())
+                    tmp_path = tmp_file.name
+                
+                if st.button("Confirm Restore"):
+                    try:
+                        db.import_database(tmp_path)
+                        st.success("Database restored successfully!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
 
 # Main tabs
 tab1, tab2, tab3, tab4 = st.tabs(["⚙️ Settings", "👥 Customers", "📝 Create Invoice", "📋 View Invoices"])
@@ -211,6 +230,58 @@ with tab1:
         st.session_state.cgst = cgst
         st.session_state.sgst = sgst
         st.success("✅ Settings saved successfully!")
+    
+    # Reset All Data Section
+    st.markdown("---")
+    st.markdown("#### 🔄 Reset Database")
+    st.warning("⚠️ **Danger Zone**: This will delete ALL data including customers, invoices, and settings!")
+    
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if 'confirm_reset' not in st.session_state:
+            st.session_state.confirm_reset = False
+        
+        if st.button("🗑️ Reset All Data", type="secondary"):
+            st.session_state.confirm_reset = True
+    
+    with col2:
+        if st.session_state.confirm_reset:
+            st.error("⚠️ Are you absolutely sure? This action CANNOT be undone!")
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                if st.button("✅ YES, DELETE EVERYTHING", type="primary"):
+                    try:
+                        # Delete the database file (validate it's in current directory)
+                        # Note: db_path is validated when set via "Switch Database" button
+                        # to ensure it contains no path separators and is just a filename
+                        db_path = st.session_state.db_path
+                        # Additional validation: ensure path is just a filename
+                        if os.path.basename(db_path) == db_path and os.path.exists(db_path):
+                            os.remove(db_path)
+                        
+                        # Reset session state to defaults
+                        st.session_state.metal_settings = {
+                            'Gold 24K': {'rate': 6500.0, 'wastage': 5.0, 'making': 10.0},
+                            'Gold 22K': {'rate': 6000.0, 'wastage': 6.0, 'making': 12.0},
+                            'Gold 18K': {'rate': 5500.0, 'wastage': 7.0, 'making': 14.0},
+                            'Silver': {'rate': 75.0, 'wastage': 3.0, 'making': 8.0}
+                        }
+                        st.session_state.cgst = 1.5
+                        st.session_state.sgst = 1.5
+                        st.session_state.current_invoice_items = []
+                        st.session_state.selected_customer_id = None
+                        st.session_state.discount = 0.0
+                        st.session_state.confirm_reset = False
+                        
+                        st.success("✅ All data has been reset! The page will reload...")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error resetting data: {str(e)}")
+            
+            with col_b:
+                if st.button("❌ Cancel"):
+                    st.session_state.confirm_reset = False
+                    st.rerun()
 
 
 # ============================================================================
