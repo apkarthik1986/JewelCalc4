@@ -21,10 +21,18 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
     <style>
-    /* Hide Streamlit branding */
+    /* Hide Streamlit branding and header */
     [data-testid="stToolbar"] {visibility: hidden;}
     [data-testid="stDecoration"] {visibility: hidden;}
     [data-testid="stStatusWidget"] {visibility: hidden;}
+    header {visibility: hidden;}
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Remove top padding to prevent blocking navigation buttons */
+    .block-container {
+        padding-top: 1rem;
+    }
     
     /* Custom header */
     .main-header {
@@ -607,12 +615,12 @@ with tab4:
                         key=f"dl_{row['invoice_no']}"
                     )
                 
-                # Print PDF (opens in new tab for printing)
+                # Print (opens in new tab for printing to any connected printer)
                 with col2:
                     pdf_buffer_print = create_invoice_pdf(invoice, items_df, customer)
                     import base64
                     b64 = base64.b64encode(pdf_buffer_print.read()).decode()
-                    href = f'<a href="data:application/pdf;base64,{b64}" target="_blank">🖨️ Print PDF</a>'
+                    href = f'<a href="data:application/pdf;base64,{b64}" target="_blank">🖨️ PRINT</a>'
                     st.markdown(href, unsafe_allow_html=True)
                 
                 # Thermal print
@@ -639,20 +647,25 @@ with tab4:
                     st.markdown("---")
                     st.markdown("### ✏️ Edit Invoice")
                     
-                    # Load items into editable list
-                    edit_items = []
-                    for _, item in items_df.iterrows():
-                        edit_items.append({
-                            'metal': item['metal'],
-                            'weight': float(item['weight']),
-                            'rate': float(item['rate']),
-                            'wastage_percent': float(item['wastage_percent']),
-                            'making_percent': float(item['making_percent']),
-                            'item_value': float(item['item_value']),
-                            'wastage_amount': float(item['wastage_amount']),
-                            'making_amount': float(item['making_amount']),
-                            'line_total': float(item['line_total'])
-                        })
+                    # Load items into editable list - use session state to persist changes
+                    if 'temp_edit_items' not in st.session_state or st.session_state.get('temp_edit_items_invoice_id') != invoice['id']:
+                        edit_items = []
+                        for _, item in items_df.iterrows():
+                            edit_items.append({
+                                'metal': item['metal'],
+                                'weight': float(item['weight']),
+                                'rate': float(item['rate']),
+                                'wastage_percent': float(item['wastage_percent']),
+                                'making_percent': float(item['making_percent']),
+                                'item_value': float(item['item_value']),
+                                'wastage_amount': float(item['wastage_amount']),
+                                'making_amount': float(item['making_amount']),
+                                'line_total': float(item['line_total'])
+                            })
+                        st.session_state.temp_edit_items = edit_items
+                        st.session_state.temp_edit_items_invoice_id = invoice['id']
+                    else:
+                        edit_items = st.session_state.temp_edit_items
                     
                     # Display editable items
                     st.markdown("**Current Items:**")
@@ -736,6 +749,8 @@ with tab4:
                                 del st.session_state.editing_invoice_no
                                 if 'temp_edit_items' in st.session_state:
                                     del st.session_state.temp_edit_items
+                                if 'temp_edit_items_invoice_id' in st.session_state:
+                                    del st.session_state.temp_edit_items_invoice_id
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"Error updating invoice: {str(e)}")
@@ -746,4 +761,6 @@ with tab4:
                             del st.session_state.editing_invoice_no
                             if 'temp_edit_items' in st.session_state:
                                 del st.session_state.temp_edit_items
+                            if 'temp_edit_items_invoice_id' in st.session_state:
+                                del st.session_state.temp_edit_items_invoice_id
                             st.rerun()
