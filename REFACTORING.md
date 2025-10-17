@@ -19,9 +19,9 @@ JewelCalc1/
 **After:**
 ```
 JewelCalc1/
-├── app.py             # 600 lines - Clean UI layer
-├── database.py        # 235 lines - Data layer
-├── utils.py           # 57 lines - Helper functions
+├── app.py             # 499 lines - Clean UI layer
+├── database.py        # 239 lines - Data layer
+├── utils.py           # 56 lines - Helper functions
 ├── pdf_generator.py   # 108 lines - PDF generation
 ├── requirements.txt
 ├── README.md          # Updated
@@ -39,9 +39,9 @@ JewelCalc1/
 #### 2. Code Readability
 - **Before:** 874 lines in single file, deeply nested logic, Streamlit state management issues
 - **After:** 
-  - app.py: 600 lines (UI only)
-  - database.py: 235 lines (data only)
-  - utils.py: 57 lines (helpers only)
+  - app.py: 499 lines (UI only)
+  - database.py: 239 lines (data only)
+  - utils.py: 56 lines (helpers only)
   - pdf_generator.py: 108 lines (PDF only)
 
 #### 3. Maintainability
@@ -125,12 +125,12 @@ JewelCalc1/
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| Total Lines | 874 | 1000 | +14% |
+| Total Lines | 874 | 902 | +3% |
 | Files | 1 | 4 | +300% |
-| Avg Lines/File | 874 | 250 | -71% |
+| Avg Lines/File | 874 | 226 | -74% |
 | Functions | ~30 | 25 | -17% |
 | Classes | 0 | 1 | New |
-| Documentation Files | 1 | 3 | +200% |
+| Documentation Files | 1 | 4 | +300% |
 
 ### Performance Impact
 
