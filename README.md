@@ -1,23 +1,35 @@
 # JewelCalc
 
-**JewelCalc** is a Streamlit-based web application designed for jewellry shops to easily manage customer details, create and edit invoices with multiple metal items, apply taxes and discounts, and generate printable PDF bills—all in an intuitive, tabbed interface.
+**JewelCalc** is a clean, modular Streamlit-based web application designed for jewelry shops to manage customer details, create invoices with multiple metal items, apply taxes and discounts, and generate professional PDF bills.
 
 ## Features
 
-- **Tabbed Navigation:** Easy access to Base Settings, Customers, Invoice Entry, and Invoices.
-- **Customer Management:** Add, edit, search, and delete customer records with account numbers and contact info.
-- **Invoice Management:** Create new invoices, add multiple items per invoice (with metal type, weight, rate, wastage, making charges), apply discounts, and preview totals.
-- **Tax Calculation:** Built-in CGST and SGST support, customizable rates.
-- **PDF Export:** Generate and download professional PDF invoices for printing or emailing.
-- **Database Management:** Switch between multiple SQLite database files for different shops or branches.
-- **Sticky UI:** Fixed title and tab bar stay visible during scrolling for a smooth UX.
+- **🎨 Clean Modern UI:** Intuitive tabbed interface with beautiful styling
+- **👥 Customer Management:** Add, edit, search, and delete customer records with automatic account numbering
+- **📝 Invoice Creation:** Create invoices with multiple items (metal type, weight, rate, wastage, making charges)
+- **💰 Tax & Discount Support:** Built-in CGST and SGST calculation with discount options
+- **📄 PDF Export:** Generate and download professional PDF invoices
+- **🗄️ Database Management:** SQLite backend with easy database switching
+- **⚙️ Configurable Settings:** Customize metal rates, wastage, and making charges
+
+## Project Structure
+
+```
+JewelCalc1/
+├── app.py              # Main Streamlit application
+├── database.py         # Database operations
+├── utils.py            # Utility functions
+├── pdf_generator.py    # PDF generation
+├── requirements.txt    # Python dependencies
+└── README.md          # Documentation
+```
 
 ## Installation
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/jewelcalc.git
-   cd jewelcalc
+   git clone https://github.com/apkarthik1986/JewelCalc1.git
+   cd JewelCalc1
    ```
 
 2. **Install dependencies:**
@@ -27,19 +39,27 @@
 
 3. **Run the app:**
    ```bash
-   streamlit run jewelcalc.py
+   streamlit run app.py
    ```
 
 ## Requirements
 
 - Python 3.8 or newer
-- See `requirements.txt` for Python package dependencies
+- streamlit >= 1.25.0
+- pandas
+- reportlab
+- sqlite3 (included in Python)
 
 ## Usage
 
-- Open the app in your browser at `http://localhost:8501/`
-- Use the tabs at the top to set base values, manage customers, enter invoices, and view/export invoices.
-- The sidebar helps with database management and navigation.
+1. **Settings Tab:** Configure metal rates, wastage percentages, making charges, and tax rates
+2. **Customers Tab:** Add and manage customer information
+3. **Create Invoice Tab:** Select a customer, add items, and save invoices
+4. **View Invoices Tab:** Browse, search, and download invoice PDFs
+
+## Database
+
+The application uses SQLite for data storage. Database files are stored in the project directory with a `.db` extension. You can switch between different databases using the sidebar.
 
 ## License
 
@@ -48,4 +68,4 @@ MIT License
 ---
 
 **JewelCalc**  
-Simple, reliable billing for jewellers.
+Clean, reliable billing for jewelry shops.
