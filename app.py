@@ -252,7 +252,10 @@ with tab1:
                 if st.button("✅ YES, DELETE EVERYTHING", type="primary"):
                     try:
                         # Delete the database file (validate it's in current directory)
+                        # Note: db_path is validated when set via "Switch Database" button
+                        # to ensure it contains no path separators and is just a filename
                         db_path = st.session_state.db_path
+                        # Additional validation: ensure path is just a filename
                         if os.path.basename(db_path) == db_path and os.path.exists(db_path):
                             os.remove(db_path)
                         
