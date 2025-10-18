@@ -1221,7 +1221,20 @@ if require_admin():
         with admin_tab3:
             st.markdown("#### Password Reset Requests")
             
-            pending_resets = auth_db.get_pending_password_reset_requests()
+            # Replace the existing line:
+            # pending_resets = auth_db.get_pending_password_reset_requests()
+            
+            # With this guarded approach:
+            try:
+                pending_resets = auth_db.get_pending_password_reset_requests()
+            except AttributeError as err:
+                # Helpful debug information for the admin UI (remove after fixing)
+                st.error("Internal error: authentication DB object is missing expected method get_pending_password_reset_requests().")
+                st.write("auth_db type:", type(auth_db))
+                st.write("auth_db dir:", sorted(dir(auth_db)))
+                # Fall back to an empty dataframe so UI continues to load
+                import pandas as pd
+                pending_resets = pd.DataFrame()
             
             if not pending_resets.empty:
                 st.warning(f"⏳ {len(pending_resets)} password reset request(s) pending")
