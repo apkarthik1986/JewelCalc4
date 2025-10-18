@@ -777,12 +777,7 @@ with tab4:
                     )
                 
                 # Edit invoice button
-                with col4:
-                    if st.button("✏️ Edit Invoice", key=f"edit_{row['invoice_no']}"):
-                        st.session_state.editing_invoice_id = invoice['id']
-                        st.session_state.editing_invoice_no = row['invoice_no']
-                        st.rerun()
-                
+# --- Replace the existing "Edit invoice form" block with the following code ---
                 # Edit invoice form
                 if st.session_state.get('editing_invoice_id') == invoice['id']:
                     st.markdown("---")
@@ -808,103 +803,208 @@ with tab4:
                     else:
                         edit_items = st.session_state.temp_edit_items
                     
-                    # Display editable items
-                    st.markdown("**Current Items:**")
+                    # Convert to DataFrame for inline editing
+                    df_edit = pd.DataFrame(edit_items)
+                    if df_edit.empty:
+                        df_edit = pd.DataFrame(columns=[
+                            'metal', 'weight', 'rate', 'wastage_percent', 'making_percent',
+                            'item_value', 'wastage_amount', 'making_amount', 'line_total'
+                        ])
+                    
+                    # Ensure columns exist and in desired order
+                    cols_order = ['metal', 'weight', 'rate', 'wastage_percent', 'making_percent',
+                                  'item_value', 'wastage_amount', 'making_amount', 'line_total']
+                    for c in cols_order:
+                        if c not in df_edit.columns:
+                            df_edit[c] = 0.0 if c not in ('metal',) else ''
+                    df_edit = df_edit[cols_order]
+                    
+                    st.markdown("**Edit Items Inline:**")
+                    
+                    # Use data_editor to let user edit rows inline.
+                    # Editable columns: metal, weight, rate, wastage_percent, making_percent.
+                    # Computed columns are displayed as read-only and will be recalculated live.
+                    try:
+                        edited_df = st.data_editor(
+                            df_edit,
+                            column_config={
+                                'metal': st.column_config.TextColumn('metal'),
+                                'weight': st.column_config.NumberColumn('weight', format="%.3f"),
+                                'rate': st.column_config.NumberColumn('rate', format="%.2f"),
+                                'wastage_percent': st.column_config.NumberColumn('wastage_percent', format="%.2f"),
+                                'making_percent': st.column_config.NumberColumn('making_percent', format="%.2f"),
+                                'item_value': st.column_config.NumberColumn('item_value', format="%.2f", disabled=True),
+                                'wastage_amount': st.column_config.NumberColumn('wastage_amount', format="%.2f", disabled=True),
+                                'making_amount': st.column_config.NumberColumn('making_amount', format="%.2f", disabled=True),
+                                'line_total': st.column_config.NumberColumn('line_total', format="%.2f", disabled=True),
+                            },
+                            hide_index=True,
+                            use_container_width=True,
+                            key=f"items_editor_{invoice['id']}"
+                        )
+                    except Exception:
+                        # Fallback if column_config API isn't available in older Streamlit versions
+                        edited_df = st.data_editor(
+                            df_edit,
+                            hide_index=True,
+                            use_container_width=True,
+                            key=f"items_editor_{invoice['id']}"
+                        )
+                    
+                    # Recalculate totals for rows based on edited numeric inputs
+                    recalculated_rows = []
+                    for _, row in edited_df.iterrows():
+                        try:
+                            metal = str(row.get('metal', '')).strip() or list(st.session_state.metal_settings.keys())[0]
+                            # Some values may be NaN or empty strings; coerce safely to floats
+                            try:
+                                weight = float(row.get('weight') or 0.0)
+                            except Exception:
+                                weight = 0.0
+                            try:
+                                rate = float(row.get('rate') or 0.0)
+                            except Exception:
+                                rate = 0.0
+                            try:
+                                wastage_pct = float(row.get('wastage_percent') or 0.0)
+                            except Exception:
+                                wastage_pct = 0.0
+                            try:
+                                making_pct = float(row.get('making_percent') or 0.0)
+                            except Exception:
+                                making_pct = 0.0
+                            
+                            if weight > 0 and rate > 0:
+                                totals = calculate_item_totals(weight, rate, wastage_pct, making_pct)
+                                item_value = totals['item_value']
+                                wastage_amount = totals['wastage_amount']
+                                making_amount = totals['making_amount']
+                                line_total = totals['line_total']
+                            else:
+                                item_value = 0.0
+                                wastage_amount = 0.0
+                                making_amount = 0.0
+                                line_total = 0.0
+                        except Exception:
+                            item_value = 0.0
+                            wastage_amount = 0.0
+                            making_amount = 0.0
+                            line_total = 0.0
+                        
+                        recalculated_rows.append({
+                            'metal': metal,
+                            'weight': weight,
+                            'rate': rate,
+                            'wastage_percent': wastage_pct,
+                            'making_percent': making_pct,
+                            'item_value': item_value,
+                            'wastage_amount': wastage_amount,
+                            'making_amount': making_amount,
+                            'line_total': line_total
+                        })
+                    
+                    # Persist recalculated rows back to session state
+                    st.session_state.temp_edit_items = recalculated_rows
+                    
+                    # Display recalculated table (read-friendly)
                     items_edit_display = []
-                    for i, item in enumerate(edit_items):
+                    for i, item in enumerate(recalculated_rows):
                         items_edit_display.append({
                             'No.': i + 1,
                             'Metal': item['metal'],
                             'Weight': f"{item['weight']:.3f}g",
                             'Rate': format_currency(item['rate']),
+                            'Item Value': format_currency(item['item_value']),
+                            'Wastage': format_currency(item['wastage_amount']),
+                            'Making': format_currency(item['making_amount']),
                             'Total': format_currency(item['line_total'])
                         })
                     st.dataframe(pd.DataFrame(items_edit_display), width='stretch', hide_index=True)
                     
-                    # Add new item to edit
-                    st.markdown("**Add/Modify Items:**")
-                    col1, col2, col3, col4 = st.columns(4)
-                    
-                    with col1:
-                        edit_metal = st.selectbox("Metal", options=list(st.session_state.metal_settings.keys()), key=f"edit_metal_{invoice['id']}")
-                    
-                    with col2:
-                        edit_weight = st.number_input("Weight (g)", min_value=0.0, format="%.3f", key=f"edit_weight_{invoice['id']}")
-                    
-                    edit_settings = st.session_state.metal_settings[edit_metal]
-                    
-                    with col3:
-                        edit_rate = st.number_input("Rate/g", value=edit_settings['rate'], format="%.2f", key=f"edit_rate_{invoice['id']}")
-                    
-                    with col4:
-                        edit_wastage = st.number_input("Wastage %", value=edit_settings['wastage'], format="%.2f", key=f"edit_wastage_{invoice['id']}")
-                    
-                    edit_making = st.number_input("Making %", value=edit_settings['making'], format="%.2f", key=f"edit_making_{invoice['id']}")
-                    
-                    if st.button("➕ Add Item", key=f"add_edit_item_{invoice['id']}"):
-                        if edit_weight > 0:
-                            totals = calculate_item_totals(edit_weight, edit_rate, edit_wastage, edit_making)
-                            edit_items.append({
-                                'metal': edit_metal,
-                                'weight': edit_weight,
-                                'rate': edit_rate,
-                                'wastage_percent': edit_wastage,
-                                'making_percent': edit_making,
-                                'item_value': totals['item_value'],
-                                'wastage_amount': totals['wastage_amount'],
-                                'making_amount': totals['making_amount'],
-                                'line_total': totals['line_total']
+                    # Add / remove item buttons (affect session_state.temp_edit_items)
+                    col_a, col_b = st.columns([1, 1])
+                    with col_a:
+                        if st.button("➕ Add Empty Item", key=f"add_empty_{invoice['id']}"):
+                            st.session_state.temp_edit_items.append({
+                                'metal': list(st.session_state.metal_settings.keys())[0],
+                                'weight': 0.0,
+                                'rate': 0.0,
+                                'wastage_percent': 0.0,
+                                'making_percent': 0.0,
+                                'item_value': 0.0,
+                                'wastage_amount': 0.0,
+                                'making_amount': 0.0,
+                                'line_total': 0.0
                             })
-                            st.session_state.temp_edit_items = edit_items
-                            st.rerun()
+                            st.experimental_rerun()
+                    with col_b:
+                        if st.button("🗑️ Remove Last Item", key=f"remove_last_{invoice['id']}"):
+                            if st.session_state.temp_edit_items:
+                                st.session_state.temp_edit_items.pop()
+                            st.experimental_rerun()
                     
-                    if st.button("🗑️ Remove Last Item", key=f"remove_edit_item_{invoice['id']}"):
-                        if edit_items:
-                            edit_items.pop()
-                            st.session_state.temp_edit_items = edit_items
-                            st.rerun()
-                    
-                    # Update discount
+                    # Edit discount (live)
                     edit_discount = st.number_input(
                         "Discount %", 
                         min_value=0.0, 
-                        value=float(invoice['discount_percent']), 
+                        value=float(invoice.get('discount_percent', 0.0)), 
                         format="%.2f",
                         key=f"edit_discount_{invoice['id']}"
                     )
+                    
+                    # Calculate invoice summary from recalculated rows
+                    subtotal_edit = sum(item['line_total'] for item in st.session_state.temp_edit_items) if st.session_state.temp_edit_items else 0.0
+                    discount_amt_edit = subtotal_edit * (edit_discount / 100)
+                    taxable_edit = subtotal_edit - discount_amt_edit
+                    cgst_amt_edit = taxable_edit * (invoice.get('cgst_percent', 0.0) / 100)
+                    sgst_amt_edit = taxable_edit * (invoice.get('sgst_percent', 0.0) / 100)
+                    total_edit = taxable_edit + cgst_amt_edit + sgst_amt_edit
+                    
+                    st.markdown("---")
+                    col1, col2 = st.columns(2)
+                    with col2:
+                        st.markdown(f"**Subtotal:** {format_currency(subtotal_edit)}")
+                        if edit_discount > 0:
+                            st.markdown(f"**Discount ({edit_discount}%):** -{format_currency(discount_amt_edit)}")
+                            st.markdown(f"**Taxable Amount:** {format_currency(taxable_edit)}")
+                        st.markdown(f"**CGST ({invoice.get('cgst_percent', 0.0)}%):** {format_currency(cgst_amt_edit)}")
+                        st.markdown(f"**SGST ({invoice.get('sgst_percent', 0.0)}%):** {format_currency(sgst_amt_edit)}")
+                        st.markdown(f"### **Total:** {format_currency(total_edit)}")
                     
                     # Save changes
                     col1, col2 = st.columns(2)
                     with col1:
                         if st.button("💾 Save Changes", key=f"save_edit_{invoice['id']}"):
                             try:
-                                db.update_invoice(
-                                    invoice['id'],
-                                    edit_items,
-                                    invoice['cgst_percent'],
-                                    invoice['sgst_percent'],
-                                    edit_discount
-                                )
-                                st.success("✅ Invoice updated successfully!")
-                                del st.session_state.editing_invoice_id
-                                del st.session_state.editing_invoice_no
-                                if 'temp_edit_items' in st.session_state:
-                                    del st.session_state.temp_edit_items
-                                if 'temp_edit_items_invoice_id' in st.session_state:
-                                    del st.session_state.temp_edit_items_invoice_id
-                                st.rerun()
+                                # Validate: must have at least one non-zero item
+                                valid_items = [it for it in st.session_state.temp_edit_items if it['line_total'] > 0]
+                                if not valid_items:
+                                    st.error("Invoice must have at least one non-zero item")
+                                else:
+                                    db.update_invoice(
+                                        invoice['id'],
+                                        st.session_state.temp_edit_items,
+                                        invoice.get('cgst_percent', 0.0),
+                                        invoice.get('sgst_percent', 0.0),
+                                        edit_discount
+                                    )
+                                    st.success("✅ Invoice updated successfully!")
+                                    # Clean up edit state
+                                    for k in ('editing_invoice_id', 'editing_invoice_no', 'temp_edit_items', 'temp_edit_items_invoice_id'):
+                                        if k in st.session_state:
+                                            del st.session_state[k]
+                                    st.rerun()
                             except Exception as e:
                                 st.error(f"Error updating invoice: {str(e)}")
                     
                     with col2:
                         if st.button("❌ Cancel Edit", key=f"cancel_edit_{invoice['id']}"):
-                            del st.session_state.editing_invoice_id
-                            del st.session_state.editing_invoice_no
-                            if 'temp_edit_items' in st.session_state:
-                                del st.session_state.temp_edit_items
-                            if 'temp_edit_items_invoice_id' in st.session_state:
-                                del st.session_state.temp_edit_items_invoice_id
+                            # discard changes
+                            for k in ('editing_invoice_id', 'editing_invoice_no', 'temp_edit_items', 'temp_edit_items_invoice_id'):
+                                if k in st.session_state:
+                                    del st.session_state[k]
                             st.rerun()
+# --- End replacement block ---
 
 
 # ============================================================================
