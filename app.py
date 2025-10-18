@@ -22,13 +22,39 @@ st.set_page_config(
 )
 
 # Custom CSS
-# NOTE: previously the CSS hid the Streamlit toolbar/header which prevented the built-in
-# "open sidebar" control from working after the sidebar was collapsed.
-# We now keep header/toolbar visible so the native sidebar toggle works reliably.
+# Keep Streamlit toolbar/header visible so the native sidebar toggle works.
+# Hide only the GitHub/fork elements and the three-dot main menu (#MainMenu).
+# Do NOT touch the sidebar collapse/open controls (e.g. [data-testid="collapsedControl"]).
 st.markdown("""
     <style>
-    /* Keep Streamlit toolbar and header visible so native collapsed/open control works */
-    /* (Do not hide [data-testid="stToolbar"] or header) */
+    /* --- Preserve native controls --- */
+    /* Don't hide data-testid collapsed control or toolbar so side >> / << still work */
+
+    /* --- Hide GitHub/Fork/three-dot (MainMenu) --- */
+    /* Hide the three-dot main menu */
+    #MainMenu { visibility: hidden !important; }
+
+    /* Hide any links that point to GitHub (logo, fork links, ribbons) */
+    a[href*="github.com"] { display: none !important; pointer-events: none !important; }
+
+    /* Hide elements that include the word "Fork" in title/aria-label (fork buttons/ribbons) */
+    [title*="Fork"], [aria-label*="Fork"], [aria-label*="Fork repository"] {
+        display: none !important;
+        pointer-events: none !important;
+    }
+
+    /* Common fork-ribbon classes or elements (best-effort) */
+    .github-fork-ribbon, .forkme, .fork-ribbon, .ribbon-fork {
+        display: none !important;
+    }
+
+    /* Hide any elements showing GitHub icon via aria-label/title */
+    [aria-label*="GitHub"], [title*="GitHub"] {
+        display: none !important;
+        pointer-events: none !important;
+    }
+
+    /* --- App styling preserved below --- */
 
     /* Remove top padding to prevent blocking navigation buttons */
     .block-container {
