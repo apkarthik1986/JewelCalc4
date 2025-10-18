@@ -293,7 +293,7 @@ with tab1:
     edited_metals = st.data_editor(
         df_metals,
         num_rows="dynamic",
-        use_container_width=True,
+        `width='stretch',
         key="metals_editor"
     )
     
@@ -304,7 +304,7 @@ with tab1:
     with col2:
         sgst = st.number_input("SGST %", value=st.session_state.sgst, min_value=0.0, format="%.2f")
     
-    if st.button("💾 Save Settings", use_container_width=True):
+    if st.button("💾 Save Settings", `width='stretch'):
         # Update metal settings
         new_settings = {}
         for _, row in edited_metals.iterrows():
@@ -394,7 +394,7 @@ with tab2:
             phone = st.text_input("Phone Number * (10 digits)")
             address = st.text_area("Address")
         
-        if st.button("➕ Add Customer", use_container_width=True):
+        if st.button("➕ Add Customer", `width='stretch'):
             if not name or not phone:
                 st.error("Name and phone are required")
             elif not validate_phone(phone):
@@ -431,7 +431,7 @@ with tab2:
                     phone = st.text_input("Phone Number", value=customer['phone'])
                     address = st.text_area("Address", value=customer.get('address', ''))
                 
-                if st.button("💾 Update Customer", use_container_width=True):
+                if st.button("💾 Update Customer", width='stretch'):
                     if not name or not phone:
                         st.error("Name and phone are required")
                     elif not validate_phone(phone):
@@ -460,7 +460,7 @@ with tab2:
                 customer_id = customer_options[selected]
                 confirm = st.checkbox("I confirm I want to delete this customer")
                 
-                if confirm and st.button("🗑️ Delete Customer", use_container_width=True):
+                if confirm and st.button("🗑️ Delete Customer", width='stretch'):
                     db.delete_customer(customer_id)
                     st.success("✅ Customer deleted successfully!")
                     st.rerun()
@@ -475,7 +475,7 @@ with tab2:
                    customers_df['phone'].str.contains(search, case=False))
             customers_df = customers_df[mask]
         
-        st.dataframe(customers_df, use_container_width=True, hide_index=True)
+        st.dataframe(customers_df, width='stretch', hide_index=True)
     else:
         st.info("No customers yet. Add your first customer above!")
 
@@ -545,7 +545,7 @@ with tab3:
                 with col7:
                     st.metric("Line Total", format_currency(totals['line_total']))
                 
-                if st.button("➕ Add Item to Invoice", use_container_width=True):
+                if st.button("➕ Add Item to Invoice", width='stretch'):
                     item = {
                         'metal': metal,
                         'weight': weight,
@@ -577,7 +577,7 @@ with tab3:
                         'Total': format_currency(item['line_total'])
                     })
                 
-                st.dataframe(pd.DataFrame(items_display), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(items_display), width='stretch', hide_index=True)
                 
                 # Remove item button
                 if st.button("🗑️ Remove Last Item"):
@@ -613,7 +613,7 @@ with tab3:
                     st.markdown(f"### **Total:** {format_currency(total)}")
                 
                 # Save invoice
-                if st.button("💾 Save Invoice", use_container_width=True):
+                if st.button("💾 Save Invoice", width='stretch'):
                     try:
                         invoice_no = generate_invoice_number()
                         db.save_invoice(
@@ -684,7 +684,7 @@ with tab4:
                         'Total': format_currency(item['line_total'])
                     })
                 
-                st.dataframe(pd.DataFrame(items_display), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(items_display), width='stretch', hide_index=True)
                 
                 # Summary
                 st.markdown("---")
@@ -794,7 +794,7 @@ with tab4:
                             'Rate': format_currency(item['rate']),
                             'Total': format_currency(item['line_total'])
                         })
-                    st.dataframe(pd.DataFrame(items_edit_display), use_container_width=True, hide_index=True)
+                    st.dataframe(pd.DataFrame(items_edit_display), width='stretch', hide_index=True)
                     
                     # Add new item to edit
                     st.markdown("**Add/Modify Items:**")
@@ -899,7 +899,7 @@ with tab5:
     
     with col1:
         st.markdown("**Create Backup**")
-        if st.button("💾 Backup Database", use_container_width=True):
+        if st.button("💾 Backup Database", width='stretch'):
             import shutil
             from datetime import datetime
             backup_name = f"backup_{st.session_state.username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
@@ -922,7 +922,7 @@ with tab5:
         st.markdown("**Restore from Backup**")
         restore_file = st.file_uploader("📂 Upload Database Backup", type=['db'], key="db_restore")
         if restore_file is not None:
-            if st.button("⬆️ Restore Database", use_container_width=True):
+            if st.button("⬆️ Restore Database", width='stretch'):
                 import tempfile
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:
@@ -946,7 +946,7 @@ with tab5:
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("📥 Export Customers (CSV)", use_container_width=True):
+        if st.button("📥 Export Customers (CSV)", width='stretch'):
             csv_data = db.export_customers_csv()
             st.download_button(
                 label="💾 Download CSV",
@@ -960,7 +960,7 @@ with tab5:
         uploaded_customers = st.file_uploader("📤 Import Customers (CSV)", type=['csv'], key="import_customers")
         if uploaded_customers is not None:
             csv_content = uploaded_customers.read().decode('utf-8')
-            if st.button("⬆️ Import Customers", use_container_width=True):
+            if st.button("⬆️ Import Customers", width='stretch'):
                 imported, errors = db.import_customers_csv(csv_content)
                 if imported > 0:
                     st.success(f"✅ Imported {imported} customers")
@@ -977,7 +977,7 @@ with tab5:
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("📥 Export Invoices (JSON)", use_container_width=True):
+        if st.button("📥 Export Invoices (JSON)", width='stretch'):
             json_data = db.export_invoices_json()
             from datetime import datetime
             st.download_button(
@@ -992,7 +992,7 @@ with tab5:
         uploaded_invoices = st.file_uploader("📤 Import Invoices (JSON)", type=['json'], key="import_invoices")
         if uploaded_invoices is not None:
             json_content = uploaded_invoices.read().decode('utf-8')
-            if st.button("⬆️ Import Invoices", use_container_width=True):
+            if st.button("⬆️ Import Invoices", width='stretch'):
                 imported, errors = db.import_invoices_json(json_content)
                 if imported > 0:
                     st.success(f"✅ Imported {imported} invoices")
@@ -1032,12 +1032,12 @@ if require_admin():
                     
                     col_a, col_b = st.columns(2)
                     with col_a:
-                        if st.button("✅ Approve", key=f"approve_{user['id']}", use_container_width=True):
+                        if st.button("✅ Approve", key=f"approve_{user['id']}", width='stretch'):
                             auth_db.approve_user(user['id'], st.session_state.user_id)
                             st.success(f"✅ User {user['username']} approved!")
                             st.rerun()
                     with col_b:
-                        if st.button("❌ Reject", key=f"reject_{user['id']}", use_container_width=True):
+                        if st.button("❌ Reject", key=f"reject_{user['id']}", width='stretch'):
                             auth_db.reject_user(user['id'])
                             st.success(f"❌ User {user['username']} rejected!")
                             st.rerun()
