@@ -65,6 +65,53 @@ def test_authentication():
     assert len(all_users) >= 2, "Should have at least 2 users"
     print("✓ Get all users works correctly")
     
+    # Test 7: Update user password
+    new_hash = hash_password('newpass456')
+    db.update_user_password(user_id, new_hash)
+    user = db.get_user_by_username('testuser')
+    assert verify_password('newpass456', user['password_hash']), "Password should be updated"
+    print("✓ Update user password works correctly")
+    
+    # Test 8: Add user with immediate approval (admin creation)
+    admin_created_user_id = db.add_user_with_approval(
+        'adminuser', 
+        hash_password('admin123'), 
+        'Admin Created User', 
+        'admin@test.com', 
+        '9876543210', 
+        'user',
+        admin['id']
+    )
+    assert admin_created_user_id > 0, "Admin-created user should be created"
+    admin_user = db.get_user_by_username('adminuser')
+    assert admin_user['status'] == 'approved', "Admin-created user should be approved"
+    print(f"✓ Admin-created user with ID: {admin_created_user_id}")
+    
+    # Test 9: Password reset request
+    reset_request_id = db.create_password_reset_request('testuser', 'test@test.com', '1234567890', 'password')
+    assert reset_request_id is not None, "Password reset request should be created"
+    print(f"✓ Password reset request created with ID: {reset_request_id}")
+    
+    # Test 10: Get pending password reset requests
+    pending_resets = db.get_pending_password_reset_requests()
+    assert len(pending_resets) == 1, "Should have 1 pending reset request"
+    print("✓ Pending password reset requests retrieved correctly")
+    
+    # Test 11: Resolve password reset request
+    new_pwd_hash = hash_password('resetpass789')
+    result = db.resolve_password_reset_request(reset_request_id, admin['id'], new_pwd_hash)
+    assert result, "Password reset should be resolved"
+    user = db.get_user_by_username('testuser')
+    assert verify_password('resetpass789', user['password_hash']), "Password should be reset"
+    print("✓ Password reset resolution works correctly")
+    
+    # Test 12: Reject password reset request
+    reset_request_id2 = db.create_password_reset_request('testuser', '', '', 'username')
+    assert reset_request_id2 is not None, "Username request should be created"
+    result = db.reject_password_reset_request(reset_request_id2)
+    assert result, "Request rejection should work"
+    print("✓ Password reset request rejection works correctly")
+    
     print("✅ Authentication tests passed!\n")
 
 def test_database_operations():

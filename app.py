@@ -1035,151 +1035,294 @@ if require_admin():
     with tab6:
         st.markdown("### 🔐 Admin Panel")
         
-        # User Management
-        st.markdown("#### User Management")
+        # Create sub-tabs for different admin functions
+        admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs([
+            "👥 User Management", 
+            "➕ Create User",
+            "🔑 Password Requests",
+            "📊 Database Overview"
+        ])
         
-        # Pending Approvals
-        pending_users = auth_db.get_pending_users()
-        if not pending_users.empty:
-            st.markdown("**Pending Approval Requests**")
-            st.warning(f"⏳ {len(pending_users)} user(s) waiting for approval")
+        with admin_tab1:
+            st.markdown("#### User Management")
             
-            for _, user in pending_users.iterrows():
-                with st.expander(f"👤 {user['username']} - {user['full_name']}"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**Username:** {user['username']}")
-                        st.markdown(f"**Full Name:** {user['full_name']}")
-                        st.markdown(f"**Email:** {user.get('email', 'N/A')}")
-                    with col2:
-                        st.markdown(f"**Phone:** {user.get('phone', 'N/A')}")
-                        st.markdown(f"**Requested:** {user['created_at']}")
-                    
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        if st.button("✅ Approve", key=f"approve_{user['id']}", width='stretch'):
-                            auth_db.approve_user(user['id'], st.session_state.user_id)
-                            st.success(f"✅ User {user['username']} approved!")
-                            st.rerun()
-                    with col_b:
-                        if st.button("❌ Reject", key=f"reject_{user['id']}", width='stretch'):
-                            auth_db.reject_user(user['id'])
-                            st.success(f"❌ User {user['username']} rejected!")
-                            st.rerun()
-        else:
-            st.info("✅ No pending approval requests")
-        
-        st.markdown("---")
-        
-        # All Users
-        st.markdown("#### All Users")
-        all_users = auth_db.get_all_users()
-        
-        if not all_users.empty:
-            # Filter controls
-            col1, col2 = st.columns(2)
-            with col1:
-                status_filter = st.selectbox("Filter by Status", ["All", "Approved", "Pending"])
-            with col2:
-                role_filter = st.selectbox("Filter by Role", ["All", "Admin", "User"])
-            
-            # Apply filters
-            filtered_users = all_users.copy()
-            if status_filter != "All":
-                filtered_users = filtered_users[filtered_users['status'] == status_filter.lower()]
-            if role_filter != "All":
-                filtered_users = filtered_users[filtered_users['role'] == role_filter.lower()]
-            
-            # Display users
-            for _, user in filtered_users.iterrows():
-                with st.expander(f"👤 {user['username']} ({user['role'].title()}) - {user['status'].title()}"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**Username:** {user['username']}")
-                        st.markdown(f"**Full Name:** {user['full_name']}")
-                        st.markdown(f"**Email:** {user.get('email', 'N/A')}")
-                        st.markdown(f"**Phone:** {user.get('phone', 'N/A')}")
-                    with col2:
-                        st.markdown(f"**Role:** {user['role'].title()}")
-                        st.markdown(f"**Status:** {user['status'].title()}")
-                        st.markdown(f"**Created:** {user['created_at']}")
-                        if user.get('approved_at'):
-                            st.markdown(f"**Approved:** {user['approved_at']}")
-                    
-                    # Admin actions
-                    if user['username'] != 'admin':  # Prevent admin from modifying the default admin
-                        st.markdown("**Actions:**")
-                        col_a, col_b, col_c = st.columns(3)
-                        
-                        with col_a:
-                            new_role = st.selectbox(
-                                "Change Role",
-                                ["user", "admin"],
-                                index=0 if user['role'] == 'user' else 1,
-                                key=f"role_{user['id']}"
-                            )
-                            if st.button("Update Role", key=f"update_role_{user['id']}"):
-                                auth_db.update_user_role(user['id'], new_role)
-                                st.success(f"✅ Role updated to {new_role}")
-                                st.rerun()
-                        
-                        with col_b:
-                            # View user's database
-                            user_db_path = f'jewelcalc_user_{user["id"]}.db'
-                            if os.path.exists(user_db_path):
-                                st.info(f"📊 Database exists")
-                                # Could add stats here
-                            else:
-                                st.warning("No database yet")
-                        
-                        with col_c:
-                            if st.button("🗑️ Delete User", key=f"delete_{user['id']}", type="secondary"):
-                                if st.session_state.get(f'confirm_delete_{user["id"]}'):
-                                    auth_db.reject_user(user['id'])
-                                    st.success(f"✅ User deleted")
-                                    st.rerun()
-                                else:
-                                    st.session_state[f'confirm_delete_{user["id"]}'] = True
-                                    st.warning("Click again to confirm")
-        else:
-            st.info("No users in the system")
-        
-        st.markdown("---")
-        
-        # Database Statistics
-        st.markdown("#### Database Overview")
-        
-        # Get all user databases
-        import glob
-        user_dbs = glob.glob('jewelcalc_user_*.db')
-        
-        if user_dbs:
-            st.markdown(f"**Total User Databases:** {len(user_dbs)}")
-            
-            # Show statistics for each user database
-            for db_file in user_dbs:
-                try:
-                    user_db = Database(db_file)
-                    customers = user_db.get_customers()
-                    invoices = user_db.get_invoices()
-                    
-                    user_id = db_file.replace('jewelcalc_user_', '').replace('.db', '')
-                    user_info = all_users[all_users['id'] == int(user_id)]
-                    username = user_info.iloc[0]['username'] if not user_info.empty else f"User {user_id}"
-                    
-                    with st.expander(f"📊 {username} - {db_file}"):
-                        col1, col2, col3 = st.columns(3)
+            # Pending Approvals
+            pending_users = auth_db.get_pending_users()
+            if not pending_users.empty:
+                st.markdown("**Pending Approval Requests**")
+                st.warning(f"⏳ {len(pending_users)} user(s) waiting for approval")
+                
+                for _, user in pending_users.iterrows():
+                    with st.expander(f"👤 {user['username']} - {user['full_name']}"):
+                        col1, col2 = st.columns(2)
                         with col1:
-                            st.metric("Customers", len(customers))
+                            st.markdown(f"**Username:** {user['username']}")
+                            st.markdown(f"**Full Name:** {user['full_name']}")
+                            st.markdown(f"**Email:** {user.get('email', 'N/A')}")
                         with col2:
-                            st.metric("Invoices", len(invoices))
-                        with col3:
-                            if not invoices.empty:
-                                total_revenue = invoices['total'].sum()
-                                st.metric("Total Revenue", format_currency(total_revenue))
+                            st.markdown(f"**Phone:** {user.get('phone', 'N/A')}")
+                            st.markdown(f"**Requested:** {user['created_at']}")
+                        
+                        col_a, col_b = st.columns(2)
+                        with col_a:
+                            if st.button("✅ Approve", key=f"approve_{user['id']}", width='stretch'):
+                                auth_db.approve_user(user['id'], st.session_state.user_id)
+                                st.success(f"✅ User {user['username']} approved!")
+                                st.rerun()
+                        with col_b:
+                            if st.button("❌ Reject", key=f"reject_{user['id']}", width='stretch'):
+                                auth_db.reject_user(user['id'])
+                                st.success(f"❌ User {user['username']} rejected!")
+                                st.rerun()
+            else:
+                st.info("✅ No pending approval requests")
+            
+            st.markdown("---")
+            
+            # All Users
+            st.markdown("#### All Users")
+            all_users = auth_db.get_all_users()
+            
+            if not all_users.empty:
+                # Filter controls
+                col1, col2 = st.columns(2)
+                with col1:
+                    status_filter = st.selectbox("Filter by Status", ["All", "Approved", "Pending"])
+                with col2:
+                    role_filter = st.selectbox("Filter by Role", ["All", "Admin", "User"])
+                
+                # Apply filters
+                filtered_users = all_users.copy()
+                if status_filter != "All":
+                    filtered_users = filtered_users[filtered_users['status'] == status_filter.lower()]
+                if role_filter != "All":
+                    filtered_users = filtered_users[filtered_users['role'] == role_filter.lower()]
+                
+                # Display users
+                for _, user in filtered_users.iterrows():
+                    with st.expander(f"👤 {user['username']} ({user['role'].title()}) - {user['status'].title()}"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown(f"**Username:** {user['username']}")
+                            st.markdown(f"**Full Name:** {user['full_name']}")
+                            st.markdown(f"**Email:** {user.get('email', 'N/A')}")
+                            st.markdown(f"**Phone:** {user.get('phone', 'N/A')}")
+                        with col2:
+                            st.markdown(f"**Role:** {user['role'].title()}")
+                            st.markdown(f"**Status:** {user['status'].title()}")
+                            st.markdown(f"**Created:** {user['created_at']}")
+                            if user.get('approved_at'):
+                                st.markdown(f"**Approved:** {user['approved_at']}")
+                        
+                        # Admin actions
+                        if user['username'] != 'admin':  # Prevent admin from modifying the default admin
+                            st.markdown("**Actions:**")
+                            col_a, col_b, col_c, col_d = st.columns(4)
+                            
+                            with col_a:
+                                new_role = st.selectbox(
+                                    "Change Role",
+                                    ["user", "admin"],
+                                    index=0 if user['role'] == 'user' else 1,
+                                    key=f"role_{user['id']}"
+                                )
+                                if st.button("Update Role", key=f"update_role_{user['id']}"):
+                                    auth_db.update_user_role(user['id'], new_role)
+                                    st.success(f"✅ Role updated to {new_role}")
+                                    st.rerun()
+                            
+                            with col_b:
+                                # Reset password
+                                if st.button("🔑 Reset Password", key=f"reset_pwd_{user['id']}"):
+                                    st.session_state[f'show_reset_{user["id"]}'] = True
+                                    st.rerun()
+                                
+                                if st.session_state.get(f'show_reset_{user["id"]}'):
+                                    new_pwd = st.text_input("New Password", type="password", key=f"new_pwd_{user['id']}")
+                                    if st.button("Set Password", key=f"set_pwd_{user['id']}"):
+                                        if len(new_pwd) >= 6:
+                                            from auth import hash_password
+                                            new_hash = hash_password(new_pwd)
+                                            auth_db.update_user_password(user['id'], new_hash)
+                                            st.success("✅ Password updated!")
+                                            del st.session_state[f'show_reset_{user["id"]}']
+                                            st.rerun()
+                                        else:
+                                            st.error("Password must be at least 6 characters")
+                            
+                            with col_c:
+                                # View user's database
+                                user_db_path = f'jewelcalc_user_{user["id"]}.db'
+                                if os.path.exists(user_db_path):
+                                    st.info(f"📊 Database exists")
+                                    # Could add stats here
+                                else:
+                                    st.warning("No database yet")
+                            
+                            with col_d:
+                                if st.button("🗑️ Delete User", key=f"delete_{user['id']}", type="secondary"):
+                                    if st.session_state.get(f'confirm_delete_{user["id"]}'):
+                                        auth_db.reject_user(user['id'])
+                                        st.success(f"✅ User deleted")
+                                        st.rerun()
+                                    else:
+                                        st.session_state[f'confirm_delete_{user["id"]}'] = True
+                                        st.warning("Click again to confirm")
+            else:
+                st.info("No users in the system")
+        
+        with admin_tab2:
+            st.markdown("#### Create New User")
+            st.info("💡 Create a new user account with immediate approval (bypasses signup workflow)")
+            
+            with st.form("admin_create_user_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    create_username = st.text_input("Username *")
+                    create_full_name = st.text_input("Full Name *")
+                    create_email = st.text_input("Email")
+                with col2:
+                    create_phone = st.text_input("Phone Number")
+                    create_role = st.selectbox("Role", ["user", "admin"])
+                    create_password = st.text_input("Password *", type="password")
+                
+                create_user_submit = st.form_submit_button("➕ Create User", use_container_width=True)
+                
+                if create_user_submit:
+                    if not create_username or not create_full_name or not create_password:
+                        st.error("Username, full name, and password are required")
+                    elif len(create_password) < 6:
+                        st.error("Password must be at least 6 characters long")
+                    else:
+                        try:
+                            # Check if username already exists
+                            existing_user = auth_db.get_user_by_username(create_username)
+                            if existing_user:
+                                st.error("❌ Username already exists. Please choose a different username.")
                             else:
-                                st.metric("Total Revenue", format_currency(0))
-                except Exception as e:
-                    st.error(f"Error reading {db_file}: {str(e)}")
-        else:
-            st.info("No user databases found")
+                                # Create new user with immediate approval
+                                from auth import hash_password
+                                password_hash = hash_password(create_password)
+                                user_id = auth_db.add_user_with_approval(
+                                    create_username, 
+                                    password_hash, 
+                                    create_full_name, 
+                                    create_email, 
+                                    create_phone, 
+                                    create_role,
+                                    st.session_state.user_id
+                                )
+                                st.success(f"✅ User '{create_username}' created successfully! User ID: {user_id}")
+                                st.warning("⚠️ **Important**: Securely communicate the password to the user through a secure channel (not shown here for security reasons). Consider requiring users to change their password on first login.")
+                                st.balloons()
+                        except Exception as e:
+                            st.error(f"Error creating user: {str(e)}")
+        
+        with admin_tab3:
+            st.markdown("#### Password Reset Requests")
+            
+            pending_resets = auth_db.get_pending_password_reset_requests()
+            
+            if not pending_resets.empty:
+                st.warning(f"⏳ {len(pending_resets)} password reset request(s) pending")
+                
+                for _, request in pending_resets.iterrows():
+                    with st.expander(f"🔑 {request['username']} - {request['request_type'].title()} Request"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown(f"**Username:** {request['username']}")
+                            st.markdown(f"**Request Type:** {request['request_type'].title()}")
+                            st.markdown(f"**Email:** {request.get('email', 'N/A')}")
+                        with col2:
+                            st.markdown(f"**Phone:** {request.get('phone', 'N/A')}")
+                            st.markdown(f"**Requested:** {request['requested_at']}")
+                        
+                        st.markdown("---")
+                        st.markdown("**Actions:**")
+                        
+                        if request['request_type'] in ['password', 'both']:
+                            # Show password reset form
+                            col_a, col_b, col_c = st.columns(3)
+                            with col_a:
+                                new_password = st.text_input(
+                                    "Set New Password", 
+                                    type="password", 
+                                    key=f"reset_pwd_{request['id']}"
+                                )
+                            with col_b:
+                                if st.button("✅ Reset Password", key=f"do_reset_{request['id']}"):
+                                    if len(new_password) >= 6:
+                                        from auth import hash_password
+                                        new_hash = hash_password(new_password)
+                                        auth_db.resolve_password_reset_request(
+                                            request['id'], 
+                                            st.session_state.user_id, 
+                                            new_hash
+                                        )
+                                        st.success(f"✅ Password reset for {request['username']}")
+                                        st.warning("⚠️ **Important**: Securely communicate the new password to the user through email, phone, or other secure channel.")
+                                        st.rerun()
+                                    else:
+                                        st.error("Password must be at least 6 characters")
+                            with col_c:
+                                if st.button("❌ Reject Request", key=f"reject_reset_{request['id']}"):
+                                    auth_db.reject_password_reset_request(request['id'])
+                                    st.success("Request rejected")
+                                    st.rerun()
+                        else:
+                            # Username request - just show the username
+                            st.info(f"👤 Username for this user is: **{request['username']}**")
+                            col_a, col_b = st.columns(2)
+                            with col_a:
+                                if st.button("✅ Mark as Resolved", key=f"resolve_{request['id']}"):
+                                    auth_db.resolve_password_reset_request(
+                                        request['id'], 
+                                        st.session_state.user_id
+                                    )
+                                    st.success("Request resolved")
+                                    st.rerun()
+                            with col_b:
+                                if st.button("❌ Reject Request", key=f"reject_reset_{request['id']}"):
+                                    auth_db.reject_password_reset_request(request['id'])
+                                    st.success("Request rejected")
+                                    st.rerun()
+            else:
+                st.info("✅ No pending password reset requests")
+        
+        with admin_tab4:
+            st.markdown("#### Database Overview")
+            
+            # Get all user databases
+            import glob
+            user_dbs = glob.glob('jewelcalc_user_*.db')
+            
+            if user_dbs:
+                st.markdown(f"**Total User Databases:** {len(user_dbs)}")
+                
+                # Show statistics for each user database
+                for db_file in user_dbs:
+                    try:
+                        user_db = Database(db_file)
+                        customers = user_db.get_customers()
+                        invoices = user_db.get_invoices()
+                        
+                        user_id = db_file.replace('jewelcalc_user_', '').replace('.db', '')
+                        user_info = all_users[all_users['id'] == int(user_id)]
+                        username = user_info.iloc[0]['username'] if not user_info.empty else f"User {user_id}"
+                        
+                        with st.expander(f"📊 {username} - {db_file}"):
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Customers", len(customers))
+                            with col2:
+                                st.metric("Invoices", len(invoices))
+                            with col3:
+                                if not invoices.empty:
+                                    total_revenue = invoices['total'].sum()
+                                    st.metric("Total Revenue", format_currency(total_revenue))
+                                else:
+                                    st.metric("Total Revenue", format_currency(0))
+                    except Exception as e:
+                        st.error(f"Error reading {db_file}: {str(e)}")
+            else:
+                st.info("No user databases found")

@@ -41,6 +41,24 @@ class Database:
             )
         ''')
         
+        # Password reset requests table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS password_reset_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                username TEXT NOT NULL,
+                email TEXT,
+                phone TEXT,
+                request_type TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                requested_at TEXT NOT NULL,
+                resolved_at TEXT,
+                resolved_by INTEGER,
+                FOREIGN KEY(user_id) REFERENCES users(id),
+                FOREIGN KEY(resolved_by) REFERENCES users(id)
+            )
+        ''')
+        
         # Customers table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS customers (
@@ -96,7 +114,6 @@ class Database:
     # User operations
     def add_user(self, username, password_hash, full_name, email="", phone="", role="user"):
         """Add a new user (signup)"""
-        from datetime import datetime
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -142,7 +159,6 @@ class Database:
     
     def approve_user(self, user_id, admin_id):
         """Approve a user"""
-        from datetime import datetime
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -171,6 +187,109 @@ class Database:
         conn.commit()
         conn.close()
     
+    def update_user_password(self, user_id, new_password_hash):
+        """Update user password"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET password_hash=? WHERE id=?',
+            (new_password_hash, user_id)
+        )
+        conn.commit()
+        conn.close()
+    
+    def add_user_with_approval(self, username, password_hash, full_name, email="", phone="", role="user", admin_id=None):
+        """Add a new user with immediate approval (for admin creation)"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+            'INSERT INTO users (username, password_hash, full_name, email, phone, role, status, created_at, approved_at, approved_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (username, password_hash, full_name, email, phone, role, 'approved', now, now, admin_id)
+        )
+        conn.commit()
+        user_id = cursor.lastrowid
+        conn.close()
+        return user_id
+    
+    def create_password_reset_request(self, username, email="", phone="", request_type="password"):
+        """Create a password reset request"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # First, check if user exists
+        cursor.execute('SELECT id, email, phone FROM users WHERE username = ?', (username,))
+        user = cursor.fetchone()
+        
+        if user is None:
+            conn.close()
+            return None
+        
+        user_id = user[0]
+        user_email = user[1] or ""
+        user_phone = user[2] or ""
+        
+        cursor.execute(
+            'INSERT INTO password_reset_requests (user_id, username, email, phone, request_type, status, requested_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (user_id, username, email or user_email, phone or user_phone, request_type, 'pending', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        conn.commit()
+        request_id = cursor.lastrowid
+        conn.close()
+        return request_id
+    
+    def get_pending_password_reset_requests(self):
+        """Get all pending password reset requests"""
+        conn = self.get_connection()
+        df = pd.read_sql_query(
+            'SELECT id, user_id, username, email, phone, request_type, requested_at FROM password_reset_requests WHERE status = ? ORDER BY requested_at DESC',
+            conn,
+            params=('pending',)
+        )
+        conn.close()
+        return df
+    
+    def resolve_password_reset_request(self, request_id, admin_id, new_password_hash=None):
+        """Resolve a password reset request and optionally set new password"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # Get request details
+        cursor.execute('SELECT user_id FROM password_reset_requests WHERE id = ?', (request_id,))
+        result = cursor.fetchone()
+        
+        if result is None:
+            conn.close()
+            return False
+        
+        user_id = result[0]
+        
+        # Update password if provided
+        if new_password_hash:
+            cursor.execute('UPDATE users SET password_hash=? WHERE id=?', (new_password_hash, user_id))
+        
+        # Mark request as resolved
+        cursor.execute(
+            'UPDATE password_reset_requests SET status=?, resolved_at=?, resolved_by=? WHERE id=?',
+            ('resolved', datetime.now().strftime("%Y-%m-%d %H:%M:%S"), admin_id, request_id)
+        )
+        
+        conn.commit()
+        conn.close()
+        return True
+    
+    def reject_password_reset_request(self, request_id):
+        """Reject a password reset request"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE password_reset_requests SET status=?, resolved_at=? WHERE id=?',
+            ('rejected', datetime.now().strftime("%Y-%m-%d %H:%M:%S"), request_id)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    
     def create_admin_if_not_exists(self):
         """Create default admin user if no admin exists"""
         import hashlib
@@ -181,7 +300,6 @@ class Database:
         count = cursor.fetchone()[0]
         
         if count == 0:
-            from datetime import datetime
             # Default admin: username=admin, password=admin123
             # Use PBKDF2 for secure password hashing
             salt = os.urandom(32)
