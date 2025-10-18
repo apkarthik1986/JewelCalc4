@@ -190,9 +190,12 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-# Floating sidebar toggle button
-# (This helps when the native open-control is hidden by custom CSS. It tries several selectors.)
-st.markdown("""
+
+# Floating sidebar toggle button (use components.html so the <script> runs correctly)
+import streamlit.components.v1 as components
+
+components.html(
+    """
     <style>
     /* Floating sidebar toggle button */
     #sidebar-toggle-btn {
@@ -214,23 +217,39 @@ st.markdown("""
         #sidebar-toggle-btn { display: none; }
     }
     </style>
-    <button id="sidebar-toggle-btn" onclick="(function(){
+
+    <button id="sidebar-toggle-btn">☰ Sidebar</button>
+
+    <script>
+    (function(){
+        // Try a list of selectors to find Streamlit's collapsed/open button and click it.
         const selectors = [
-            'button[title=\"Open sidebar\"]',
-            'button[aria-label=\"Open sidebar\"]',
-            'button[aria-label=\"Open Sidebar\"]',
-            'button[title=\"Open Sidebar\"]',
-            '[data-testid=\"collapsedControl\"] button',
-            '.css-1bd1x1g button' // fallback
+            'button[title="Open sidebar"]',
+            'button[aria-label="Open sidebar"]',
+            'button[aria-label="Open Sidebar"]',
+            'button[title="Open Sidebar"]',
+            '[data-testid="collapsedControl"] button',
+            '.css-1bd1x1g button' /* fallback */
         ];
-        for (let sel of selectors) {
-            try {
-                const btn = document.querySelector(sel);
-                if (btn) { btn.click(); return; }
-            } catch(e) {}
+        const btnEl = document.getElementById('sidebar-toggle-btn');
+        if (btnEl) {
+            btnEl.addEventListener('click', function(){
+                for (let sel of selectors) {
+                    try {
+                        const btn = document.querySelector(sel);
+                        if (btn) { btn.click(); return; }
+                    } catch(e) {
+                        // ignore and continue trying selectors
+                    }
+                }
+            });
         }
-    })()">☰ Sidebar</button>
-""", unsafe_allow_html=True)
+    })();
+    </script>
+    """,
+    height=64,
+    scrolling=False,
+)
 
 def get_device_id():
     """Generate a unique device identifier based on system information"""
