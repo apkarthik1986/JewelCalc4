@@ -30,29 +30,59 @@ st.markdown("""
     /* --- Preserve native controls --- */
     /* Don't hide data-testid collapsed control or toolbar so side >> / << still work */
 
-    /* --- Hide GitHub/Fork/three-dot (MainMenu) --- */
-    /* Hide the three-dot main menu */
-    #MainMenu { visibility: hidden !important; }
+    /* --- Hide three-dot main menu --- */
+    #MainMenu { visibility: hidden !important; pointer-events: none !important; }
 
-    /* Hide any links that point to GitHub (logo, fork links, ribbons) */
-    a[href*="github.com"] { display: none !important; pointer-events: none !important; }
-
-    /* Hide elements that include the word "Fork" in title/aria-label (fork buttons/ribbons) */
-    [title*="Fork"], [aria-label*="Fork"], [aria-label*="Fork repository"] {
+    /* --- Hide GitHub/Fork/related UI (best-effort selectors) --- */
+    /* Hide anchors linking to GitHub (covers most logos/ribbons that are links) */
+    a[href*="github.com"], a[href*="github.io"], a[href*="githubusercontent.com"] {
         display: none !important;
         pointer-events: none !important;
     }
 
-    /* Common fork-ribbon classes or elements (best-effort) */
-    .github-fork-ribbon, .forkme, .fork-ribbon, .ribbon-fork {
-        display: none !important;
-    }
-
-    /* Hide any elements showing GitHub icon via aria-label/title */
-    [aria-label*="GitHub"], [title*="GitHub"] {
+    /* Hide images that reference GitHub assets */
+    img[src*="github.com"], img[src*="githubusercontent"], img[alt*="GitHub"] {
         display: none !important;
         pointer-events: none !important;
     }
+
+    /* Common fork/logo/ribbon classes (best-effort) */
+    .github-corner, .github-corner * ,
+    .github-fork-ribbon, .github-fork-ribbon * ,
+    .fork-ribbon, .fork-ribbon *,
+    .forkme, .forkme *,
+    .ribbon-fork, .ribbon-fork * {
+        display: none !important;
+        pointer-events: none !important;
+    }
+
+    /* Octicon / GitHub icon classes */
+    .octicon-mark-github, .octicon-mark-github * ,
+    .gh-corner, .gh-corner * ,
+    .GitHubCorner, .GitHubCorner * {
+        display: none !important;
+        pointer-events: none !important;
+    }
+
+    /* Elements with attributes suggesting GitHub/fork */
+    [title*="GitHub"], [aria-label*="GitHub"], [title*="Fork"], [aria-label*="Fork"], [data-testid*="github"], [data-testid*="fork"] {
+        display: none !important;
+        pointer-events: none !important;
+    }
+
+    /* Hide inline-styled background images that reference GitHub assets */
+    [style*="github"], [style*="githubusercontent"], [style*="octicon"], [style*="github-corner"] {
+        display: none !important;
+        pointer-events: none !important;
+    }
+
+    /* Slightly broader fallback: hide links that contain the string 'repo' plus github in parent */
+    a[href*="github"][href*="repo"] { display: none !important; pointer-events: none !important; }
+
+    /*
+      NOTE: We avoid hiding any general toolbar or collapsed-control selectors so that
+      the sidebar >> / << buttons remain visible and functional.
+    */
 
     /* --- App styling preserved below --- */
 
