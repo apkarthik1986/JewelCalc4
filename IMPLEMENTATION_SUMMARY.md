@@ -85,7 +85,7 @@
 - `auth.py`: Lines 35-80 - Login validation
 - Status checks: pending, approved, rejected
 
-### 6. Jewelry Billing Best Practices ✅
+### 6. Jewellery Billing Best Practices ✅
 **Implemented:**
 - Multi-item invoices with detailed breakdowns
 - Wastage and making charge calculations

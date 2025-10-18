@@ -1,6 +1,6 @@
 """
-JewelCalc - Jewelry Billing & Customer Management System
-A professional multi-user Streamlit application for jewelry shops
+JewelCalc - Jewellery Billing & Customer Management System
+A professional multi-user Streamlit application for jewellery shops
 """
 import streamlit as st
 import pandas as pd
@@ -438,36 +438,53 @@ with tab2:
         else:
             st.markdown("#### Edit Customer")
             
-            customer_options = {f"{row['name']} ({row['phone']})": row['id'] 
-                              for _, row in customers_df.iterrows()}
+            # Type-ahead search
+            search_query = st.text_input("🔍 Search Customer (type name or phone)", "", 
+                                         help="Start typing to filter customers")
             
-            selected = st.selectbox("Select Customer", options=list(customer_options.keys()))
+            # Filter customers based on search query
+            if search_query:
+                mask = (customers_df['name'].str.contains(search_query, case=False, na=False) | 
+                       customers_df['phone'].str.contains(search_query, case=False, na=False))
+                filtered_customers = customers_df[mask]
+            else:
+                filtered_customers = customers_df
             
-            if selected:
-                customer_id = customer_options[selected]
-                customer = db.get_customer_by_id(customer_id)
+            if not filtered_customers.empty:
+                # Create options from filtered customers
+                customer_options = {f"{row['name']} ({row['phone']})": row['id'] 
+                                  for _, row in filtered_customers.iterrows()}
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    account_no = st.text_input("Account Number", value=customer['account_no'])
-                    name = st.text_input("Customer Name", value=customer['name'])
+                selected = st.selectbox("Select Customer", options=list(customer_options.keys()), 
+                                       key="edit_customer_select")
                 
-                with col2:
-                    phone = st.text_input("Phone Number", value=customer['phone'])
-                    address = st.text_area("Address", value=customer.get('address', ''))
-                
-                if st.button("💾 Update Customer", width='stretch'):
-                    if not name or not phone:
-                        st.error("Name and phone are required")
-                    elif not validate_phone(phone):
-                        st.error("Phone must be exactly 10 digits")
-                    else:
-                        try:
-                            db.update_customer(customer_id, account_no, name, phone, address)
-                            st.success("✅ Customer updated successfully!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {str(e)}")
+                if selected:
+                    customer_id = customer_options[selected]
+                    customer = db.get_customer_by_id(customer_id)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        account_no = st.text_input("Account Number", value=customer['account_no'])
+                        name = st.text_input("Customer Name", value=customer['name'])
+                    
+                    with col2:
+                        phone = st.text_input("Phone Number", value=customer['phone'])
+                        address = st.text_area("Address", value=customer.get('address', ''))
+                    
+                    if st.button("💾 Update Customer", width='stretch'):
+                        if not name or not phone:
+                            st.error("Name and phone are required")
+                        elif not validate_phone(phone):
+                            st.error("Phone must be exactly 10 digits")
+                        else:
+                            try:
+                                db.update_customer(customer_id, account_no, name, phone, address)
+                                st.success("✅ Customer updated successfully!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
+            else:
+                st.info("No customers match your search")
     
     else:  # Delete Customer
         if customers_df.empty:
@@ -476,19 +493,37 @@ with tab2:
             st.markdown("#### Delete Customer")
             st.warning("⚠️ This will delete the customer and all their invoices!")
             
-            customer_options = {f"{row['name']} ({row['phone']})": row['id'] 
-                              for _, row in customers_df.iterrows()}
+            # Type-ahead search
+            search_query = st.text_input("🔍 Search Customer (type name or phone)", "", 
+                                         key="delete_search",
+                                         help="Start typing to filter customers")
             
-            selected = st.selectbox("Select Customer to Delete", options=list(customer_options.keys()))
+            # Filter customers based on search query
+            if search_query:
+                mask = (customers_df['name'].str.contains(search_query, case=False, na=False) | 
+                       customers_df['phone'].str.contains(search_query, case=False, na=False))
+                filtered_customers = customers_df[mask]
+            else:
+                filtered_customers = customers_df
             
-            if selected:
-                customer_id = customer_options[selected]
-                confirm = st.checkbox("I confirm I want to delete this customer")
+            if not filtered_customers.empty:
+                # Create options from filtered customers
+                customer_options = {f"{row['name']} ({row['phone']})": row['id'] 
+                                  for _, row in filtered_customers.iterrows()}
                 
-                if confirm and st.button("🗑️ Delete Customer", width='stretch'):
-                    db.delete_customer(customer_id)
-                    st.success("✅ Customer deleted successfully!")
-                    st.rerun()
+                selected = st.selectbox("Select Customer to Delete", options=list(customer_options.keys()),
+                                       key="delete_customer_select")
+                
+                if selected:
+                    customer_id = customer_options[selected]
+                    confirm = st.checkbox("I confirm I want to delete this customer")
+                    
+                    if confirm and st.button("🗑️ Delete Customer", width='stretch'):
+                        db.delete_customer(customer_id)
+                        st.success("✅ Customer deleted successfully!")
+                        st.rerun()
+            else:
+                st.info("No customers match your search")
     
     # Show all customers
     st.markdown("---")
@@ -516,14 +551,34 @@ with tab3:
     if customers_df.empty:
         st.warning("⚠️ No customers found. Please add a customer first in the Customers tab.")
     else:
-        # Customer selection
-        customer_options = {f"{row['name']} ({row['phone']})": row['id'] 
-                          for _, row in customers_df.iterrows()}
+        # Customer selection with type-ahead search
+        st.markdown("#### Select Customer")
         
-        selected_customer = st.selectbox(
-            "Select Customer *",
-            options=[""] + list(customer_options.keys())
-        )
+        # Type-ahead search
+        search_query = st.text_input("🔍 Search Customer (type name or phone)", "", 
+                                     key="create_invoice_search",
+                                     help="Start typing to filter customers")
+        
+        # Filter customers based on search query
+        if search_query:
+            mask = (customers_df['name'].str.contains(search_query, case=False, na=False) | 
+                   customers_df['phone'].str.contains(search_query, case=False, na=False))
+            filtered_customers = customers_df[mask]
+        else:
+            filtered_customers = customers_df
+        
+        if not filtered_customers.empty:
+            customer_options = {f"{row['name']} ({row['phone']})": row['id'] 
+                              for _, row in filtered_customers.iterrows()}
+            
+            selected_customer = st.selectbox(
+                "Select Customer *",
+                options=[""] + list(customer_options.keys()),
+                key="create_invoice_customer_select"
+            )
+        else:
+            selected_customer = ""
+            st.info("No customers match your search")
         
         if selected_customer:
             st.session_state.selected_customer_id = customer_options[selected_customer]
@@ -777,7 +832,12 @@ with tab4:
                     )
                 
                 # Edit invoice button
-# --- Replace the existing "Edit invoice form" block with the following code ---
+                with col4:
+                    if st.button("✏️ Edit Invoice", key=f"edit_{row['invoice_no']}", use_container_width=True):
+                        st.session_state.editing_invoice_id = invoice['id']
+                        st.session_state.editing_invoice_no = row['invoice_no']
+                        st.rerun()
+                
                     # Edit invoice form
                     if st.session_state.get('editing_invoice_id') == invoice['id']:
                         st.markdown("---")
@@ -936,12 +996,12 @@ with tab4:
                                     'making_amount': 0.0,
                                     'line_total': 0.0
                                 })
-                                st.experimental_rerun()
+                                st.rerun()
                         with col_b:
                             if st.button("🗑️ Remove Last Item", key=f"remove_last_{invoice['id']}"):
                                 if st.session_state.temp_edit_items:
                                     st.session_state.temp_edit_items.pop()
-                                st.experimental_rerun()
+                                st.rerun()
                         
                         # Edit discount (live)
                         edit_discount = st.number_input(
@@ -1004,7 +1064,6 @@ with tab4:
                                     if k in st.session_state:
                                         del st.session_state[k]
                                 st.rerun()
-# --- End replacement block ---
 
 
 # ============================================================================
@@ -1251,23 +1310,44 @@ if require_admin():
                                             st.error("Password must be at least 6 characters")
                             
                             with col_c:
+                                # Login as user (without password)
+                                if st.button("👤 Login as User", key=f"login_as_{user['id']}", help="Access this user's account"):
+                                    # Store admin info to allow return
+                                    st.session_state.admin_return_id = st.session_state.user_id
+                                    st.session_state.admin_return_username = st.session_state.username
+                                    st.session_state.admin_return_role = st.session_state.user_role
+                                    st.session_state.admin_return_fullname = st.session_state.user_full_name
+                                    st.session_state.admin_return_dbpath = st.session_state.db_path
+                                    
+                                    # Switch to user account
+                                    st.session_state.user_id = user['id']
+                                    st.session_state.username = user['username']
+                                    st.session_state.user_role = user['role']
+                                    st.session_state.user_full_name = user['full_name']
+                                    st.session_state.db_path = f'jewelcalc_user_{user["id"]}.db'
+                                    
+                                    st.success(f"✅ Logged in as {user['username']}")
+                                    st.info("💡 Use 'Return to Admin' button in sidebar to go back")
+                                    st.rerun()
+                            
+                            with col_d:
                                 # View user's database
                                 user_db_path = f'jewelcalc_user_{user["id"]}.db'
                                 if os.path.exists(user_db_path):
                                     st.info(f"📊 Database exists")
-                                    # Could add stats here
                                 else:
                                     st.warning("No database yet")
                             
-                            with col_d:
-                                if st.button("🗑️ Delete User", key=f"delete_{user['id']}", type="secondary"):
-                                    if st.session_state.get(f'confirm_delete_{user["id"]}'):
-                                        auth_db.reject_user(user['id'])
-                                        st.success(f"✅ User deleted")
-                                        st.rerun()
-                                    else:
-                                        st.session_state[f'confirm_delete_{user["id"]}'] = True
-                                        st.warning("Click again to confirm")
+                            # Delete button in separate row
+                            st.markdown("---")
+                            if st.button("🗑️ Delete User", key=f"delete_{user['id']}", type="secondary"):
+                                if st.session_state.get(f'confirm_delete_{user["id"]}'):
+                                    auth_db.reject_user(user['id'])
+                                    st.success(f"✅ User deleted")
+                                    st.rerun()
+                                else:
+                                    st.session_state[f'confirm_delete_{user["id"]}'] = True
+                                    st.warning("Click again to confirm")
             else:
                 st.info("No users in the system")
         

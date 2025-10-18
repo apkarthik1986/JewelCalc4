@@ -212,26 +212,37 @@ class Database:
         conn.close()
         return user_id
     
-    def create_password_reset_request(self, username, email="", phone="", request_type="password"):
-        """Create a password reset request"""
+    def create_password_reset_request(self, username="", email="", phone="", request_type="password"):
+        """Create a password reset request - supports lookup by username, email, or phone"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # First, check if user exists
-        cursor.execute('SELECT id, email, phone FROM users WHERE username = ?', (username,))
-        user = cursor.fetchone()
+        # Try to find user by username, email, or phone
+        user = None
+        if username:
+            cursor.execute('SELECT id, username, email, phone FROM users WHERE username = ?', (username,))
+            user = cursor.fetchone()
+        
+        if not user and email:
+            cursor.execute('SELECT id, username, email, phone FROM users WHERE email = ?', (email,))
+            user = cursor.fetchone()
+        
+        if not user and phone:
+            cursor.execute('SELECT id, username, email, phone FROM users WHERE phone = ?', (phone,))
+            user = cursor.fetchone()
         
         if user is None:
             conn.close()
             return None
         
         user_id = user[0]
-        user_email = user[1] or ""
-        user_phone = user[2] or ""
+        username_found = user[1]
+        user_email = user[2] or ""
+        user_phone = user[3] or ""
         
         cursor.execute(
             'INSERT INTO password_reset_requests (user_id, username, email, phone, request_type, status, requested_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            (user_id, username, email or user_email, phone or user_phone, request_type, 'pending', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            (user_id, username_found, email or user_email, phone or user_phone, request_type, 'pending', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         )
         conn.commit()
         request_id = cursor.lastrowid
