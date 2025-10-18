@@ -11,6 +11,7 @@ from auth import show_login_page, show_user_menu, require_auth, require_admin
 import os
 import hashlib
 import platform
+import streamlit.components.v1 as components
 
 
 # Page configuration
@@ -191,13 +192,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Floating sidebar toggle button (use components.html so the <script> runs correctly)
-import streamlit.components.v1 as components
-
+# Floating sidebar toggle button using components.html (ensures script runs)
 components.html(
     """
     <style>
-    /* Floating sidebar toggle button */
+    /* Floating sidebar toggle button (always visible on all screen sizes) */
     #sidebar-toggle-btn {
         position: fixed;
         left: 12px;
@@ -211,10 +210,6 @@ components.html(
         cursor: pointer;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         font-weight: 700;
-    }
-    @media (min-width: 900px) {
-        /* hide on wide screens since sidebar is usually visible */
-        #sidebar-toggle-btn { display: none; }
     }
     </style>
 
@@ -247,7 +242,7 @@ components.html(
     })();
     </script>
     """,
-    height=64,
+    height=90,
     scrolling=False,
 )
 
@@ -1217,4 +1212,3 @@ if require_admin():
                     st.error(f"Error reading {db_file}: {str(e)}")
         else:
             st.info("No user databases found")
-
