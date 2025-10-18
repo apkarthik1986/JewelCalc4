@@ -1,6 +1,6 @@
 """
-JewelCalc - Jewelry Billing & Customer Management System
-A professional multi-user Streamlit application for jewelry shops
+JewelCalc - Jewellery Billing & Customer Management System
+A professional multi-user Streamlit application for Jewellery shops
 """
 import streamlit as st
 import pandas as pd
@@ -190,7 +190,47 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
+# Floating sidebar toggle button
+# (This helps when the native open-control is hidden by custom CSS. It tries several selectors.)
+st.markdown("""
+    <style>
+    /* Floating sidebar toggle button */
+    #sidebar-toggle-btn {
+        position: fixed;
+        left: 12px;
+        top: 12px;
+        z-index: 9999;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-weight: 700;
+    }
+    @media (min-width: 900px) {
+        /* hide on wide screens since sidebar is usually visible */
+        #sidebar-toggle-btn { display: none; }
+    }
+    </style>
+    <button id="sidebar-toggle-btn" onclick="(function(){
+        const selectors = [
+            'button[title=\"Open sidebar\"]',
+            'button[aria-label=\"Open sidebar\"]',
+            'button[aria-label=\"Open Sidebar\"]',
+            'button[title=\"Open Sidebar\"]',
+            '[data-testid=\"collapsedControl\"] button',
+            '.css-1bd1x1g button' // fallback
+        ];
+        for (let sel of selectors) {
+            try {
+                const btn = document.querySelector(sel);
+                if (btn) { btn.click(); return; }
+            } catch(e) {}
+        }
+    })()">☰ Sidebar</button>
+""", unsafe_allow_html=True)
 
 def get_device_id():
     """Generate a unique device identifier based on system information"""
