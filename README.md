@@ -1,8 +1,8 @@
 # JewelCalc 💎
 
-**A professional, multi-user jewelry billing and customer management system built with Streamlit.**
+**A professional, multi-user jewellery billing and customer management system built with Streamlit.**
 
-JewelCalc is designed for jewelry shops to manage customers, create invoices with multiple items, apply taxes and discounts, and generate professional PDF bills. Features a complete user authentication system with admin approval workflow and separate databases per user for enhanced security and privacy.
+JewelCalc is designed for jewellery shops to manage customers, create invoices with multiple items, apply taxes and discounts, and generate professional PDF bills. Features a complete user authentication system with admin approval workflow and separate databases per user for enhanced security and privacy.
 
 ---
 
@@ -361,4 +361,4 @@ MIT License
 
 ---
 
-**JewelCalc** - Professional, secure billing for jewelry shops. 💎
+**JewelCalc** - Professional, secure billing for jewellery shops. 💎

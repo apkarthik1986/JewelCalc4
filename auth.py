@@ -126,9 +126,9 @@ def show_login_page(db):
         st.info("📧 Submit a request to reset your password. An administrator will review and assist you.")
         
         with st.form("forgot_password_form"):
-            forgot_username = st.text_input("Username", help="If you know your username")
-            forgot_email = st.text_input("Email (optional)", help="Your registered email")
-            forgot_phone = st.text_input("Phone (optional)", help="Your registered phone number")
+            forgot_username = st.text_input("Username (optional)", help="If you know your username")
+            forgot_email = st.text_input("Email", help="Your registered email")
+            forgot_phone = st.text_input("Phone", help="Your registered phone number")
             
             request_type = st.radio(
                 "What do you need help with?",
@@ -150,20 +150,17 @@ def show_login_page(db):
                             "Forgot Both": "both"
                         }
                         
-                        if forgot_username:
-                            request_id = db.create_password_reset_request(
-                                forgot_username, 
-                                forgot_email, 
-                                forgot_phone, 
-                                request_type_map[request_type]
-                            )
-                            if request_id:
-                                st.success("✅ Your request has been submitted! An administrator will review it shortly.")
-                                st.info("💡 Please contact your administrator if you don't hear back within 24 hours.")
-                            else:
-                                st.error("❌ Username not found. Please check and try again.")
+                        request_id = db.create_password_reset_request(
+                            forgot_username, 
+                            forgot_email, 
+                            forgot_phone, 
+                            request_type_map[request_type]
+                        )
+                        if request_id:
+                            st.success("✅ Your request has been submitted! An administrator will review it shortly.")
+                            st.info("💡 Please contact your administrator if you don't hear back within 24 hours.")
                         else:
-                            st.error("❌ Username is required to submit a password reset request.")
+                            st.error("❌ No user found with the provided information. Please check and try again.")
                     except Exception as e:
                         st.error(f"Error submitting request: {str(e)}")
 
@@ -174,6 +171,26 @@ def show_user_menu():
         st.markdown("---")
         st.markdown(f"### 👤 {st.session_state.user_full_name}")
         st.info(f"**Role:** {st.session_state.user_role.title()}")
+        
+        # Show "Return to Admin" button if admin is logged in as another user
+        if st.session_state.get('admin_return_id'):
+            st.warning("⚠️ Viewing as user")
+            if st.button("🔙 Return to Admin", use_container_width=True):
+                # Restore admin session
+                st.session_state.user_id = st.session_state.admin_return_id
+                st.session_state.username = st.session_state.admin_return_username
+                st.session_state.user_role = st.session_state.admin_return_role
+                st.session_state.user_full_name = st.session_state.admin_return_fullname
+                st.session_state.db_path = st.session_state.admin_return_dbpath
+                
+                # Clear return info
+                for key in ['admin_return_id', 'admin_return_username', 'admin_return_role', 
+                           'admin_return_fullname', 'admin_return_dbpath']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                
+                st.success("✅ Returned to admin account")
+                st.rerun()
         
         # Profile/Settings expander
         with st.expander("⚙️ Profile Settings"):
@@ -209,7 +226,9 @@ def show_user_menu():
         
         if st.button("🚪 Logout", use_container_width=True):
             # Clear session state
-            for key in ['logged_in', 'user_id', 'username', 'user_role', 'user_full_name']:
+            for key in ['logged_in', 'user_id', 'username', 'user_role', 'user_full_name', 
+                       'admin_return_id', 'admin_return_username', 'admin_return_role', 
+                       'admin_return_fullname', 'admin_return_dbpath']:
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()
