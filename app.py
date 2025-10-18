@@ -40,18 +40,19 @@ st.markdown("""
     
     /* Custom header */
     .main-header {
-        background: linear-gradient(90deg, #1e88e5 0%, #1565c0 100%);
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
     .main-header h1 {
         color: white;
         margin: 0;
         font-size: 2.5rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        font-weight: 700;
     }
     
     /* Cards */
@@ -68,6 +69,11 @@ st.markdown("""
         .block-container {
             padding-left: 1rem;
             padding-right: 1rem;
+            padding-top: 1rem;
+        }
+        .main-header {
+            padding: 15px;
+            margin-bottom: 15px;
         }
         .main-header h1 {
             font-size: 1.8rem;
@@ -76,6 +82,12 @@ st.markdown("""
         .row-widget.stButton {
             width: 100%;
         }
+        /* Better mobile forms */
+        .stTextInput > div > div > input,
+        .stNumberInput > div > div > input,
+        .stSelectbox > div > div > select {
+            font-size: 16px !important;
+        }
     }
     
     /* Success/Error styling */
@@ -83,22 +95,98 @@ st.markdown("""
         background-color: #d4edda;
         border-color: #c3e6cb;
         color: #155724;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    
+    .stError {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+        color: #721c24;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    
+    .stWarning {
+        background-color: #fff3cd;
+        border-color: #ffeeba;
+        color: #856404;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    
+    .stInfo {
+        background-color: #d1ecf1;
+        border-color: #bee5eb;
+        color: #0c5460;
+        border-radius: 5px;
+        padding: 10px;
     }
     
     /* Better form styling */
-    .stTextInput > div > div > input {
-        border-radius: 5px;
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+        transition: border-color 0.3s;
+    }
+    
+    .stTextInput > div > div > input:focus,
+    .stNumberInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
     }
     
     /* Tab styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 10px;
     }
     .stTabs [data-baseweb="tab"] {
         height: 50px;
         padding-left: 20px;
         padding-right: 20px;
-        border-radius: 5px 5px 0 0;
+        border-radius: 8px;
+        background-color: white;
+        font-weight: 600;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    /* Dataframe styling */
+    .dataframe {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        font-weight: 600;
     }
     </style>
 """, unsafe_allow_html=True)
