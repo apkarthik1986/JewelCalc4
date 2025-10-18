@@ -114,7 +114,6 @@ class Database:
     # User operations
     def add_user(self, username, password_hash, full_name, email="", phone="", role="user"):
         """Add a new user (signup)"""
-        from datetime import datetime
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -160,7 +159,6 @@ class Database:
     
     def approve_user(self, user_id, admin_id):
         """Approve a user"""
-        from datetime import datetime
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -202,7 +200,6 @@ class Database:
     
     def add_user_with_approval(self, username, password_hash, full_name, email="", phone="", role="user", admin_id=None):
         """Add a new user with immediate approval (for admin creation)"""
-        from datetime import datetime
         conn = self.get_connection()
         cursor = conn.cursor()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -217,7 +214,6 @@ class Database:
     
     def create_password_reset_request(self, username, email="", phone="", request_type="password"):
         """Create a password reset request"""
-        from datetime import datetime
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -255,7 +251,6 @@ class Database:
     
     def resolve_password_reset_request(self, request_id, admin_id, new_password_hash=None):
         """Resolve a password reset request and optionally set new password"""
-        from datetime import datetime
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -285,7 +280,6 @@ class Database:
     
     def reject_password_reset_request(self, request_id):
         """Reject a password reset request"""
-        from datetime import datetime
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -306,7 +300,6 @@ class Database:
         count = cursor.fetchone()[0]
         
         if count == 0:
-            from datetime import datetime
             # Default admin: username=admin, password=admin123
             # Use PBKDF2 for secure password hashing
             salt = os.urandom(32)

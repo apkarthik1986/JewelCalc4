@@ -1213,7 +1213,7 @@ if require_admin():
                                     st.session_state.user_id
                                 )
                                 st.success(f"✅ User '{create_username}' created successfully! User ID: {user_id}")
-                                st.info(f"📧 Please inform the user of their credentials:\n- Username: {create_username}\n- Password: (the one you set)")
+                                st.warning("⚠️ **Important**: Securely communicate the password to the user through a secure channel (not shown here for security reasons). Consider requiring users to change their password on first login.")
                                 st.balloons()
                         except Exception as e:
                             st.error(f"Error creating user: {str(e)}")
@@ -1260,7 +1260,7 @@ if require_admin():
                                             new_hash
                                         )
                                         st.success(f"✅ Password reset for {request['username']}")
-                                        st.info(f"📧 Inform user: Username: {request['username']}, New Password: {new_password}")
+                                        st.warning("⚠️ **Important**: Securely communicate the new password to the user through email, phone, or other secure channel.")
                                         st.rerun()
                                     else:
                                         st.error("Password must be at least 6 characters")
