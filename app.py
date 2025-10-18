@@ -1,6 +1,6 @@
 """
-JewelCalc - Jewellery Billing & Customer Management System
-A professional multi-user Streamlit application for Jewellery shops
+JewelCalc - Jewelry Billing & Customer Management System
+A professional multi-user Streamlit application for jewelry shops
 """
 import streamlit as st
 import pandas as pd
@@ -11,7 +11,6 @@ from auth import show_login_page, show_user_menu, require_auth, require_admin
 import os
 import hashlib
 import platform
-import streamlit.components.v1 as components
 
 
 # Page configuration
@@ -23,16 +22,14 @@ st.set_page_config(
 )
 
 # Custom CSS
+# NOTE: previously the CSS hid the Streamlit toolbar/header which prevented the built-in
+# "open sidebar" control from working after the sidebar was collapsed.
+# We now keep header/toolbar visible so the native sidebar toggle works reliably.
 st.markdown("""
     <style>
-    /* Hide Streamlit branding and header */
-    [data-testid="stToolbar"] {visibility: hidden;}
-    [data-testid="stDecoration"] {visibility: hidden;}
-    [data-testid="stStatusWidget"] {visibility: hidden;}
-    header {visibility: hidden;}
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
+    /* Keep Streamlit toolbar and header visible so native collapsed/open control works */
+    /* (Do not hide [data-testid="stToolbar"] or header) */
+
     /* Remove top padding to prevent blocking navigation buttons */
     .block-container {
         padding-top: 1rem;
@@ -192,59 +189,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Floating sidebar toggle button using components.html (ensures script runs)
-components.html(
-    """
-    <style>
-    /* Floating sidebar toggle button (always visible on all screen sizes) */
-    #sidebar-toggle-btn {
-        position: fixed;
-        left: 12px;
-        top: 12px;
-        z-index: 9999;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 8px;
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        font-weight: 700;
-    }
-    </style>
-
-    <button id="sidebar-toggle-btn">☰ Sidebar</button>
-
-    <script>
-    (function(){
-        // Try a list of selectors to find Streamlit's collapsed/open button and click it.
-        const selectors = [
-            'button[title="Open sidebar"]',
-            'button[aria-label="Open sidebar"]',
-            'button[aria-label="Open Sidebar"]',
-            'button[title="Open Sidebar"]',
-            '[data-testid="collapsedControl"] button',
-            '.css-1bd1x1g button' /* fallback */
-        ];
-        const btnEl = document.getElementById('sidebar-toggle-btn');
-        if (btnEl) {
-            btnEl.addEventListener('click', function(){
-                for (let sel of selectors) {
-                    try {
-                        const btn = document.querySelector(sel);
-                        if (btn) { btn.click(); return; }
-                    } catch(e) {
-                        // ignore and continue trying selectors
-                    }
-                }
-            });
-        }
-    })();
-    </script>
-    """,
-    height=90,
-    scrolling=False,
-)
 
 def get_device_id():
     """Generate a unique device identifier based on system information"""
