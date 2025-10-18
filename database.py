@@ -23,6 +23,24 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         
+        # Users table for authentication
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                email TEXT,
+                phone TEXT,
+                role TEXT DEFAULT 'user',
+                status TEXT DEFAULT 'pending',
+                created_at TEXT NOT NULL,
+                approved_at TEXT,
+                approved_by INTEGER,
+                FOREIGN KEY(approved_by) REFERENCES users(id)
+            )
+        ''')
+        
         # Customers table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS customers (
@@ -73,6 +91,105 @@ class Database:
         ''')
         
         conn.commit()
+        conn.close()
+    
+    # User operations
+    def add_user(self, username, password_hash, full_name, email="", phone="", role="user"):
+        """Add a new user (signup)"""
+        from datetime import datetime
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO users (username, password_hash, full_name, email, phone, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (username, password_hash, full_name, email, phone, role, 'pending', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        conn.commit()
+        user_id = cursor.lastrowid
+        conn.close()
+        return user_id
+    
+    def get_user_by_username(self, username):
+        """Get user by username"""
+        conn = self.get_connection()
+        df = pd.read_sql_query(
+            'SELECT * FROM users WHERE username = ?',
+            conn,
+            params=(username,)
+        )
+        conn.close()
+        return df.iloc[0].to_dict() if not df.empty else None
+    
+    def get_all_users(self):
+        """Get all users"""
+        conn = self.get_connection()
+        df = pd.read_sql_query(
+            'SELECT id, username, full_name, email, phone, role, status, created_at, approved_at FROM users ORDER BY created_at DESC',
+            conn
+        )
+        conn.close()
+        return df
+    
+    def get_pending_users(self):
+        """Get users with pending approval"""
+        conn = self.get_connection()
+        df = pd.read_sql_query(
+            'SELECT id, username, full_name, email, phone, created_at FROM users WHERE status = ? ORDER BY created_at DESC',
+            conn,
+            params=('pending',)
+        )
+        conn.close()
+        return df
+    
+    def approve_user(self, user_id, admin_id):
+        """Approve a user"""
+        from datetime import datetime
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET status=?, approved_at=?, approved_by=? WHERE id=?',
+            ('approved', datetime.now().strftime("%Y-%m-%d %H:%M:%S"), admin_id, user_id)
+        )
+        conn.commit()
+        conn.close()
+    
+    def reject_user(self, user_id):
+        """Reject/delete a user"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM users WHERE id=?', (user_id,))
+        conn.commit()
+        conn.close()
+    
+    def update_user_role(self, user_id, role):
+        """Update user role"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET role=? WHERE id=?',
+            (role, user_id)
+        )
+        conn.commit()
+        conn.close()
+    
+    def create_admin_if_not_exists(self):
+        """Create default admin user if no admin exists"""
+        import hashlib
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM users WHERE role = ?', ('admin',))
+        count = cursor.fetchone()[0]
+        
+        if count == 0:
+            from datetime import datetime
+            # Default admin: username=admin, password=admin123
+            password_hash = hashlib.sha256("admin123".encode()).hexdigest()
+            cursor.execute(
+                'INSERT INTO users (username, password_hash, full_name, email, phone, role, status, created_at, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                ('admin', password_hash, 'Administrator', '', '', 'admin', 'approved', 
+                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            )
+            conn.commit()
         conn.close()
     
     # Customer operations
