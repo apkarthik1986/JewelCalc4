@@ -174,6 +174,7 @@ class Database:
     def create_admin_if_not_exists(self):
         """Create default admin user if no admin exists"""
         import hashlib
+        import os
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT COUNT(*) FROM users WHERE role = ?', ('admin',))
@@ -182,7 +183,11 @@ class Database:
         if count == 0:
             from datetime import datetime
             # Default admin: username=admin, password=admin123
-            password_hash = hashlib.sha256("admin123".encode()).hexdigest()
+            # Use PBKDF2 for secure password hashing
+            salt = os.urandom(32)
+            pwd_hash = hashlib.pbkdf2_hmac('sha256', "admin123".encode('utf-8'), salt, 100000)
+            password_hash = salt.hex() + ':' + pwd_hash.hex()
+            
             cursor.execute(
                 'INSERT INTO users (username, password_hash, full_name, email, phone, role, status, created_at, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 ('admin', password_hash, 'Administrator', '', '', 'admin', 'approved', 

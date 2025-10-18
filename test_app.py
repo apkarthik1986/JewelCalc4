@@ -11,10 +11,13 @@ from utils import generate_invoice_number, generate_account_number, validate_pho
 
 def cleanup_test_files():
     """Remove test database files"""
-    test_files = ['test_jewelcalc.db', 'test_auth.db', 'jewelcalc_test.db']
-    for f in test_files:
-        if os.path.exists(f):
-            os.remove(f)
+    import glob
+    # Find all test database files dynamically
+    test_patterns = ['test_*.db', 'jewelcalc_test*.db']
+    for pattern in test_patterns:
+        for f in glob.glob(pattern):
+            if os.path.exists(f):
+                os.remove(f)
 
 def test_authentication():
     """Test authentication system"""
@@ -34,7 +37,9 @@ def test_authentication():
     # Test 2: Password hashing
     password = 'testpass123'
     hashed = hash_password(password)
-    assert len(hashed) == 64, "Hash should be 64 characters"
+    # PBKDF2 hash format: salt:hash (32 bytes each = 64 hex chars + colon + 64 hex chars = 129 chars)
+    assert len(hashed) == 129, f"Hash should be 129 characters, got {len(hashed)}"
+    assert ':' in hashed, "Hash should contain salt separator"
     assert verify_password(password, hashed), "Password should verify"
     assert not verify_password('wrong', hashed), "Wrong password should fail"
     print("✓ Password hashing works correctly")
@@ -85,17 +90,29 @@ def test_database_operations():
     print("✓ Update customer works correctly")
     
     # Test 4: Create invoice
+    # Test data for a typical gold invoice
+    test_weight = 10.5  # grams
+    test_rate = 6500.0  # per gram
+    test_wastage_percent = 5.0
+    test_making_percent = 10.0
+    
+    # Calculate expected values
+    test_item_value = test_weight * test_rate  # 68250.0
+    test_wastage_amount = test_item_value * (test_wastage_percent / 100)  # 3412.5
+    test_making_amount = test_item_value * (test_making_percent / 100)  # 6825.0
+    test_line_total = test_item_value + test_wastage_amount + test_making_amount  # 78487.5
+    
     items = [
         {
             'metal': 'Gold 24K',
-            'weight': 10.5,
-            'rate': 6500.0,
-            'wastage_percent': 5.0,
-            'making_percent': 10.0,
-            'item_value': 68250.0,
-            'wastage_amount': 3412.5,
-            'making_amount': 6825.0,
-            'line_total': 78487.5
+            'weight': test_weight,
+            'rate': test_rate,
+            'wastage_percent': test_wastage_percent,
+            'making_percent': test_making_percent,
+            'item_value': test_item_value,
+            'wastage_amount': test_wastage_amount,
+            'making_amount': test_making_amount,
+            'line_total': test_line_total
         }
     ]
     invoice_no = db.save_invoice(customer_id, 'INV-00001', items, 1.5, 1.5, 0)
@@ -149,11 +166,22 @@ def test_utility_functions():
     print("✓ Phone validation works correctly")
     
     # Test 4: Calculate item totals
-    totals = calculate_item_totals(10.0, 6500.0, 5.0, 10.0)
-    assert totals['item_value'] == 65000.0, "Item value should be correct"
-    assert totals['wastage_amount'] == 3250.0, "Wastage should be correct"
-    assert totals['making_amount'] == 6500.0, "Making charge should be correct"
-    assert totals['line_total'] == 74750.0, "Line total should be correct"
+    test_weight = 10.0  # grams
+    test_rate = 6500.0  # per gram
+    test_wastage_percent = 5.0
+    test_making_percent = 10.0
+    
+    totals = calculate_item_totals(test_weight, test_rate, test_wastage_percent, test_making_percent)
+    
+    expected_item_value = 65000.0
+    expected_wastage = 3250.0
+    expected_making = 6500.0
+    expected_total = 74750.0
+    
+    assert totals['item_value'] == expected_item_value, "Item value should be correct"
+    assert totals['wastage_amount'] == expected_wastage, "Wastage should be correct"
+    assert totals['making_amount'] == expected_making, "Making charge should be correct"
+    assert totals['line_total'] == expected_total, "Line total should be correct"
     print("✓ Item calculation works correctly")
     
     print("✅ Utility functions tests passed!\n")

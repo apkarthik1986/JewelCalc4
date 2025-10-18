@@ -1,16 +1,38 @@
 """Authentication module for JewelCalc"""
 import hashlib
+import os
 import streamlit as st
 
 
 def hash_password(password):
-    """Hash password using SHA256"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash password using PBKDF2-SHA256 (secure for passwords)"""
+    # Generate a random salt
+    salt = os.urandom(32)
+    # Use PBKDF2 with 100,000 iterations for strong password hashing
+    pwd_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+    # Store salt and hash together
+    return salt.hex() + ':' + pwd_hash.hex()
 
 
 def verify_password(password, password_hash):
     """Verify password against hash"""
-    return hash_password(password) == password_hash
+    try:
+        # Split salt and hash
+        salt_hex, hash_hex = password_hash.split(':')
+        salt = bytes.fromhex(salt_hex)
+        stored_hash = bytes.fromhex(hash_hex)
+        # Hash the provided password with the stored salt
+        pwd_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+        # Compare hashes
+        return pwd_hash == stored_hash
+    except (ValueError, AttributeError):
+        # Backward compatibility for legacy SHA256 hashes (insecure, deprecated)
+        # This is only for supporting old password hashes during migration
+        # TODO: Remove this after all users have migrated to PBKDF2
+        if len(password_hash) == 64:
+            # Legacy SHA256 verification (not recommended for new passwords)
+            return hashlib.sha256(password.encode()).hexdigest() == password_hash
+        return False
 
 
 def show_login_page(db):
