@@ -23,52 +23,36 @@ st.set_page_config(
 )
 
 # Custom CSS
-# Important: We keep the Streamlit toolbar/header and collapsedControl intact so
-# the native sidebar << / >> controls remain visible and functional.
-# We hide only the top-right Share / Star / Edit / GitHub icons (best-effort selectors).
+# Important:
+# - Keep Streamlit toolbar/header and collapsedControl intact so the native sidebar << / >> controls remain visible and functional.
+# - Hide only the top-right toolbar action buttons (Share / Star / Edit / GitHub icon) using header-scoped selectors.
+# - Continue hiding the three-dot main menu (#MainMenu) as requested.
 st.markdown("""
     <style>
-    /* --- KEEP native toolbar/header & collapsed controls --- */
+    /* --- Keep native toolbar/header & collapsed control --- */
     /* Do NOT hide [data-testid="stToolbar"], header, or [data-testid="collapsedControl"] */
 
-    /* --- Hide specific top-right items (Share / Star / Edit / GitHub) --- */
-    /* Buttons that commonly show "Share", "Star", "Edit", or GitHub icons in Streamlit Cloud */
-    header [title*="Share"], header [aria-label*="Share"], header button[title*="Share"], header button[aria-label*="Share"] {
+    /* --- Hide specific top-right header toolbar actions (Share / Star / Edit / GitHub) --- */
+    /* Scope selectors to 'header' to avoid touching other page elements */
+    header .stToolbarActions,
+    header [data-testid="stToolbarActions"],
+    header .stToolbarActionButton,
+    header [data-testid="stToolbarActionButton"] {
         display: none !important;
         pointer-events: none !important;
-    }
-    header [title*="Star"], header [aria-label*="Star"], header button[title*="Star"], header button[aria-label*="Star"] {
-        display: none !important;
-        pointer-events: none !important;
-    }
-    header [title*="Edit"], header [aria-label*="Edit"], header button[title*="Edit"], header button[aria-label*="Edit"], header [aria-label*="Pencil"] {
-        display: none !important;
-        pointer-events: none !important;
-    }
-    /* GitHub / repo buttons / icons (covers anchors, buttons, and svgs with common attributes) */
-    header a[href*="github.com"], header a[href*="github.io"], header a[href*="githubusercontent.com"] {
-        display: none !important;
-        pointer-events: none !important;
-    }
-    header [title*="GitHub"], header [aria-label*="GitHub"], header button[title*="GitHub"], header button[aria-label*="GitHub"] {
-        display: none !important;
-        pointer-events: none !important;
-    }
-    /* Common github-corner / fork ribbons / logos */
-    .github-corner, .github-corner *, .github-fork-ribbon, .github-fork-ribbon *, .fork-ribbon, .fork-ribbon *, .forkme, .forkme * {
-        display: none !important;
-        pointer-events: none !important;
-    }
-    /* Images or svgs that reference GitHub assets (best-effort) */
-    header img[src*="github"], header svg[data-testid*="github"], header svg[aria-label*="GitHub"] {
-        display: none !important;
-        pointer-events: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        overflow: hidden !important;
     }
 
+    /* Keep the three-dot main menu hidden as requested */
+    #MainMenu { visibility: hidden !important; pointer-events: none !important; }
+
     /*
-      NOTE: The selectors above are intentionally scoped to 'header' so they only affect
-      the top-right header controls and not other in-page links/buttons.
-      We avoid touching toolbar/collapsedControl selectors so that the sidebar << / >> remain.
+      NOTE: We intentionally avoid selectors like [data-testid="stToolbar"] or
+      [data-testid="collapsedControl"] so the sidebar collapse/open arrows (<< / >>)
+      remain visible and functional.
     */
 
     /* --- App styling preserved below --- */
