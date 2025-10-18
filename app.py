@@ -11,6 +11,7 @@ from auth import show_login_page, show_user_menu, require_auth, require_admin
 import os
 import hashlib
 import platform
+import streamlit.components.v1 as components
 
 
 # Page configuration
@@ -22,66 +23,52 @@ st.set_page_config(
 )
 
 # Custom CSS
-# Keep Streamlit toolbar/header visible so the native sidebar toggle works.
-# Hide only the GitHub/fork elements and the three-dot main menu (#MainMenu).
-# Do NOT touch the sidebar collapse/open controls (e.g. [data-testid="collapsedControl"]).
+# Important: We keep the Streamlit toolbar/header and collapsedControl intact so
+# the native sidebar << / >> controls remain visible and functional.
+# We hide only the top-right Share / Star / Edit / GitHub icons (best-effort selectors).
 st.markdown("""
     <style>
-    /* --- Preserve native controls --- */
-    /* Don't hide data-testid collapsed control or toolbar so side >> / << still work */
+    /* --- KEEP native toolbar/header & collapsed controls --- */
+    /* Do NOT hide [data-testid="stToolbar"], header, or [data-testid="collapsedControl"] */
 
-    /* --- Hide three-dot main menu --- */
-    #MainMenu { visibility: hidden !important; pointer-events: none !important; }
-
-    /* --- Hide GitHub/Fork/related UI (best-effort selectors) --- */
-    /* Hide anchors linking to GitHub (covers most logos/ribbons that are links) */
-    a[href*="github.com"], a[href*="github.io"], a[href*="githubusercontent.com"] {
+    /* --- Hide specific top-right items (Share / Star / Edit / GitHub) --- */
+    /* Buttons that commonly show "Share", "Star", "Edit", or GitHub icons in Streamlit Cloud */
+    header [title*="Share"], header [aria-label*="Share"], header button[title*="Share"], header button[aria-label*="Share"] {
         display: none !important;
         pointer-events: none !important;
     }
-
-    /* Hide images that reference GitHub assets */
-    img[src*="github.com"], img[src*="githubusercontent"], img[alt*="GitHub"] {
+    header [title*="Star"], header [aria-label*="Star"], header button[title*="Star"], header button[aria-label*="Star"] {
         display: none !important;
         pointer-events: none !important;
     }
-
-    /* Common fork/logo/ribbon classes (best-effort) */
-    .github-corner, .github-corner * ,
-    .github-fork-ribbon, .github-fork-ribbon * ,
-    .fork-ribbon, .fork-ribbon *,
-    .forkme, .forkme *,
-    .ribbon-fork, .ribbon-fork * {
+    header [title*="Edit"], header [aria-label*="Edit"], header button[title*="Edit"], header button[aria-label*="Edit"], header [aria-label*="Pencil"] {
         display: none !important;
         pointer-events: none !important;
     }
-
-    /* Octicon / GitHub icon classes */
-    .octicon-mark-github, .octicon-mark-github * ,
-    .gh-corner, .gh-corner * ,
-    .GitHubCorner, .GitHubCorner * {
+    /* GitHub / repo buttons / icons (covers anchors, buttons, and svgs with common attributes) */
+    header a[href*="github.com"], header a[href*="github.io"], header a[href*="githubusercontent.com"] {
         display: none !important;
         pointer-events: none !important;
     }
-
-    /* Elements with attributes suggesting GitHub/fork */
-    [title*="GitHub"], [aria-label*="GitHub"], [title*="Fork"], [aria-label*="Fork"], [data-testid*="github"], [data-testid*="fork"] {
+    header [title*="GitHub"], header [aria-label*="GitHub"], header button[title*="GitHub"], header button[aria-label*="GitHub"] {
         display: none !important;
         pointer-events: none !important;
     }
-
-    /* Hide inline-styled background images that reference GitHub assets */
-    [style*="github"], [style*="githubusercontent"], [style*="octicon"], [style*="github-corner"] {
+    /* Common github-corner / fork ribbons / logos */
+    .github-corner, .github-corner *, .github-fork-ribbon, .github-fork-ribbon *, .fork-ribbon, .fork-ribbon *, .forkme, .forkme * {
         display: none !important;
         pointer-events: none !important;
     }
-
-    /* Slightly broader fallback: hide links that contain the string 'repo' plus github in parent */
-    a[href*="github"][href*="repo"] { display: none !important; pointer-events: none !important; }
+    /* Images or svgs that reference GitHub assets (best-effort) */
+    header img[src*="github"], header svg[data-testid*="github"], header svg[aria-label*="GitHub"] {
+        display: none !important;
+        pointer-events: none !important;
+    }
 
     /*
-      NOTE: We avoid hiding any general toolbar or collapsed-control selectors so that
-      the sidebar >> / << buttons remain visible and functional.
+      NOTE: The selectors above are intentionally scoped to 'header' so they only affect
+      the top-right header controls and not other in-page links/buttons.
+      We avoid touching toolbar/collapsedControl selectors so that the sidebar << / >> remain.
     */
 
     /* --- App styling preserved below --- */
