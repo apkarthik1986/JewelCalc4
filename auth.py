@@ -39,8 +39,8 @@ def show_login_page(db):
     """Display login page"""
     st.markdown('<div class="main-header"><h1>💎 JewelCalc - Login</h1></div>', unsafe_allow_html=True)
     
-    # Create tabs for login and signup
-    tab1, tab2 = st.tabs(["🔐 Login", "📝 Sign Up"])
+    # Create tabs for login, signup, and forgot password
+    tab1, tab2, tab3 = st.tabs(["🔐 Login", "📝 Sign Up", "🔑 Forgot Password"])
     
     with tab1:
         st.markdown("### Login to Your Account")
@@ -120,6 +120,52 @@ def show_login_page(db):
                             st.info("💡 An administrator will review your request. You'll be notified once your account is approved.")
                     except Exception as e:
                         st.error(f"Error creating account: {str(e)}")
+    
+    with tab3:
+        st.markdown("### Forgot Password/Username")
+        st.info("📧 Submit a request to reset your password. An administrator will review and assist you.")
+        
+        with st.form("forgot_password_form"):
+            forgot_username = st.text_input("Username", help="If you know your username")
+            forgot_email = st.text_input("Email (optional)", help="Your registered email")
+            forgot_phone = st.text_input("Phone (optional)", help="Your registered phone number")
+            
+            request_type = st.radio(
+                "What do you need help with?",
+                ["Forgot Password", "Forgot Username", "Forgot Both"],
+                horizontal=True
+            )
+            
+            forgot_submit = st.form_submit_button("Submit Request", use_container_width=True)
+            
+            if forgot_submit:
+                if not forgot_username and not forgot_email and not forgot_phone:
+                    st.error("Please provide at least your username, email, or phone number")
+                else:
+                    try:
+                        # Map request type to database format
+                        request_type_map = {
+                            "Forgot Password": "password",
+                            "Forgot Username": "username",
+                            "Forgot Both": "both"
+                        }
+                        
+                        if forgot_username:
+                            request_id = db.create_password_reset_request(
+                                forgot_username, 
+                                forgot_email, 
+                                forgot_phone, 
+                                request_type_map[request_type]
+                            )
+                            if request_id:
+                                st.success("✅ Your request has been submitted! An administrator will review it shortly.")
+                                st.info("💡 Please contact your administrator if you don't hear back within 24 hours.")
+                            else:
+                                st.error("❌ Username not found. Please check and try again.")
+                        else:
+                            st.error("❌ Username is required to submit a password reset request.")
+                    except Exception as e:
+                        st.error(f"Error submitting request: {str(e)}")
 
 
 def show_user_menu():
@@ -128,6 +174,38 @@ def show_user_menu():
         st.markdown("---")
         st.markdown(f"### 👤 {st.session_state.user_full_name}")
         st.info(f"**Role:** {st.session_state.user_role.title()}")
+        
+        # Profile/Settings expander
+        with st.expander("⚙️ Profile Settings"):
+            st.markdown("#### Change Password")
+            
+            with st.form("change_password_form"):
+                current_password = st.text_input("Current Password", type="password")
+                new_password = st.text_input("New Password", type="password")
+                confirm_new_password = st.text_input("Confirm New Password", type="password")
+                
+                change_pwd_submit = st.form_submit_button("Update Password")
+                
+                if change_pwd_submit:
+                    from database import Database
+                    auth_db = Database("jewelcalc_auth.db")
+                    
+                    if not current_password or not new_password or not confirm_new_password:
+                        st.error("All fields are required")
+                    elif new_password != confirm_new_password:
+                        st.error("New passwords do not match")
+                    elif len(new_password) < 6:
+                        st.error("Password must be at least 6 characters long")
+                    else:
+                        # Verify current password
+                        user = auth_db.get_user_by_username(st.session_state.username)
+                        if not verify_password(current_password, user['password_hash']):
+                            st.error("❌ Current password is incorrect")
+                        else:
+                            # Update password
+                            new_hash = hash_password(new_password)
+                            auth_db.update_user_password(st.session_state.user_id, new_hash)
+                            st.success("✅ Password updated successfully!")
         
         if st.button("🚪 Logout", use_container_width=True):
             # Clear session state
