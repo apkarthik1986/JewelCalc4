@@ -1,29 +1,35 @@
 # JewelCalc 💎
 
-**A clean, modern jewelry billing and customer management system built with Streamlit.**
+**A professional, multi-user jewelry billing and customer management system built with Streamlit.**
 
-JewelCalc is designed for jewelry shops to manage customers, create invoices with multiple items, apply taxes and discounts, and generate professional PDF bills. All data is stored locally on your device for complete privacy.
+JewelCalc is designed for jewelry shops to manage customers, create invoices with multiple items, apply taxes and discounts, and generate professional PDF bills. Features a complete user authentication system with admin approval workflow and separate databases per user for enhanced security and privacy.
 
 ---
 
 ## ✨ Features
 
 ### Core Features
-- **👥 Customer Management** - Add, edit, search, and delete customer records
+- **🔐 User Authentication** - Secure signup/login system with admin approval
+- **👥 Multi-User Support** - Separate databases for each user with admin oversight
+- **👨‍💼 Admin Panel** - Approve users, manage roles, monitor all databases
+- **📊 Customer Management** - Add, edit, search, and delete customer records
 - **📝 Invoice Creation** - Create multi-item invoices with automatic calculations
 - **💰 Tax & Discount** - Built-in CGST/SGST calculation with discount support
 - **📄 PDF Export** - Generate professional PDF invoices
-- **🖨️ Print Support** - Direct printing and thermal printer (80mm) format
+- **🖨️ Smart Printing** - Printer selection dialog for any connected printer
 - **⚙️ Configurable Settings** - Customize metal rates, wastage, and making charges
-- **🗄️ Database Management** - SQLite backend with backup/restore capability
-- **🔐 Local Storage** - All data stored locally on your device (PC/mobile)
+- **🗄️ Database Management** - Dedicated tab for backup/restore and import/export
+- **📱 Mobile Responsive** - Optimized UI for mobile devices
+- **🔐 Secure Storage** - User-specific local databases
 
 ### Advanced Features
 - **✏️ Invoice Editing** - Edit existing invoices, add/remove items
 - **📥📤 Import/Export** - Export/import customers (CSV) and invoices (JSON)
-- **🔄 Reset All Data** - Complete database reset option
-- **📱 Device-Specific Storage** - Each device maintains its own local database
+- **🔄 User Approval Workflow** - Admin reviews and approves new user registrations
+- **👑 Role-Based Access** - Admin and regular user roles with different permissions
+- **📊 Admin Dashboard** - View statistics across all user databases
 - **🧾 Thermal Printing** - Special format for 80mm receipt printers
+- **🔒 Data Isolation** - Each user's data stored separately and securely
 
 ---
 
@@ -37,8 +43,8 @@ JewelCalc is designed for jewelry shops to manage customers, create invoices wit
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/apkarthik1986/JewelCalc1.git
-   cd JewelCalc1
+   git clone https://github.com/apkarthik1986/JewelCalc2.git
+   cd JewelCalc2
    ```
 
 2. **Install dependencies:**
@@ -59,11 +65,36 @@ JewelCalc is designed for jewelry shops to manage customers, create invoices wit
 4. **Access the app:**
    The application will automatically open at `http://localhost:8501`
 
+5. **First time setup:**
+   - Default admin credentials:
+     - Username: `admin`
+     - Password: `admin123`
+   - **⚠️ Change the admin password after first login!**
+
 ---
 
 ## 📖 Usage Guide
 
-### First Time Setup
+### User Registration & Login
+
+**For New Users:**
+1. Click on **📝 Sign Up** tab
+2. Fill in your details (username, full name, password)
+3. Submit the registration form
+4. Wait for admin approval
+
+**For Existing Users:**
+1. Click on **🔐 Login** tab
+2. Enter your username and password
+3. Click Login
+
+**For Administrators:**
+1. Login with admin credentials
+2. Access the **🔐 Admin** tab
+3. Review and approve pending user requests
+4. Manage user roles and permissions
+
+### First Time Setup (After Login)
 
 **Step 1: Configure Settings**
 1. Go to **⚙️ Settings** tab
@@ -89,47 +120,58 @@ JewelCalc is designed for jewelry shops to manage customers, create invoices wit
 1. Go to **📋 View Invoices** tab
 2. Browse or search for invoices
 3. Click on an invoice to expand details
-4. Use **📄 Download PDF** or **🖨️ Print PDF**
+4. Use **📄 Download PDF** or **🖨️ Print**
 
-### Daily Workflow
+### Database Management
 
-**Creating Invoices**
-- Select customer → Add items → Review calculations → Save
+Navigate to **🗄️ Database** tab for:
 
-**Managing Customers**
-- **Search:** Use search box to find by name or phone
-- **Edit:** Select "Edit Customer" option
-- **Delete:** Use with caution (deletes all customer invoices)
+**Backup & Restore:**
+- Create backups of your database
+- Download backups to your device
+- Restore from previous backups
 
-**Database Management (Sidebar)**
-- View current device ID and database
-- Switch between different databases
-- Backup/restore database files
+**Import/Export Data:**
+- Export customers to CSV format
+- Import customers from CSV
+- Export invoices to JSON format
+- Import invoices from JSON
+
+### Admin Functions
+
+Access **🔐 Admin** tab (admins only) for:
+
+**User Management:**
+- Approve or reject pending user registrations
+- View all users in the system
+- Change user roles (user ↔ admin)
+- Delete user accounts
+- Monitor user database status
+
+**Database Overview:**
+- View all user databases
+- See statistics (customers, invoices, revenue)
+- Monitor system-wide usage
 
 ---
 
-## 🗄️ Local Storage & Device-Specific Data
+## 🗄️ Multi-User Architecture
 
 ### How It Works
-- Each device gets a **unique device ID** based on system information
-- Database files are named: `jewelcalc_[device_id].db`
-- Data on PC stays on PC, data on mobile stays on mobile
-- No cloud synchronization - complete local storage
+- **Central Authentication DB**: Stores all user credentials and roles
+- **User-Specific DBs**: Each user gets their own database (`jewelcalc_user_[ID].db`)
+- **Admin DB**: Admins have a separate database (`jewelcalc_admin.db`)
+- **Data Isolation**: Users can only access their own data
+- **Admin Oversight**: Admins can view statistics across all databases
 
-### Managing Multiple Devices
-If you want to share data between devices:
-1. Use **💾 Backup DB** on one device
-2. Transfer the backup file
-3. Use **📂 Restore DB** on the other device
+### Security Features
+- Password hashing (SHA-256)
+- Session-based authentication
+- Role-based access control
+- Admin approval workflow
+- Separate database per user
 
-### Multiple Databases
-You can maintain separate databases:
-- `jewelcalc_abc12345.db` - Your PC
-- `jewelcalc_def67890.db` - Your mobile
-- `store1.db` - Branch 1
-- `test.db` - Testing
-
-Use the sidebar to switch between databases.
+---
 
 ---
 
@@ -164,40 +206,29 @@ total = taxable_amount + cgst_amount + sgst_amount
 4. Modify discount
 5. Click **💾 Save Changes**
 
-### Import/Export Data
+### Printer Selection
+When printing invoices:
+1. Click **🖨️ Print** button
+2. Browser will open the print dialog
+3. Select your preferred printer from the dropdown
+4. Configure print settings as needed
+5. Click Print to send to the selected printer
 
-**Export Customers (CSV):**
-- Customers tab → **📥 Export Customers**
-- Download CSV file for backup
-
-**Import Customers (CSV):**
-- Prepare CSV with headers: `account_no, name, phone, address`
-- Customers tab → Upload CSV → **Confirm Import**
-
-**Export Invoices (JSON):**
-- View Invoices tab → **📥 Export All Invoices**
-- Complete backup of all invoice data
-
-**Import Invoices (JSON):**
-- View Invoices tab → Upload JSON → **Confirm Import**
-- Note: Customers must exist before importing invoices
-
-### Reset All Data
-1. Go to **⚙️ Settings** tab
-2. Scroll to **🔄 Reset Database** section
-3. Click **🗑️ Reset All Data**
-4. Confirm by clicking **✅ YES, DELETE EVERYTHING**
-5. All customers, invoices, and data will be deleted
-
-⚠️ **Warning:** This action cannot be undone! Create a backup first.
+### User Management (Admin Only)
+1. Go to **🔐 Admin** tab
+2. Review pending user approvals
+3. Approve or reject new users
+4. Manage user roles and permissions
+5. Monitor database usage across all users
 
 ---
 
 ## 🏗️ Project Structure
 
 ```
-JewelCalc1/
-├── app.py              # Main Streamlit application (UI)
+JewelCalc2/
+├── app.py              # Main Streamlit application
+├── auth.py             # Authentication and user management
 ├── database.py         # Database operations (SQLite)
 ├── utils.py            # Utility functions
 ├── pdf_generator.py    # PDF generation (ReportLab)
@@ -206,14 +237,27 @@ JewelCalc1/
 ```
 
 ### Technology Stack
-- **Frontend:** Streamlit
-- **Database:** SQLite3
+- **Frontend:** Streamlit (Mobile-Responsive)
+- **Authentication:** Session-based with SHA-256 hashing
+- **Database:** SQLite3 (Multi-database architecture)
 - **PDF Generation:** ReportLab
 - **Data Processing:** Pandas
 
 ---
 
 ## 🛠️ Troubleshooting
+
+### Cannot Login
+```
+Issue: "Your account is pending approval"
+Solution: Wait for an administrator to approve your account
+```
+
+### Forgot Admin Password
+```bash
+# Reset admin password by accessing the database directly
+# Or contact the system administrator
+```
 
 ### App Won't Start
 ```bash
@@ -241,34 +285,39 @@ pip install streamlit pandas reportlab
 
 ### PDF Not Downloading
 - Check browser download settings
-- Disable pop-up blockers for print PDF
+- Disable pop-up blockers
 - Ensure sufficient disk space
 
-### Import Errors
-- Check CSV/JSON format matches requirements
-- Ensure all required fields are present
-- Verify customer IDs exist before importing invoices
+### Print Dialog Not Appearing
+- Check browser pop-up settings
+- Allow pop-ups for the application
+- Try a different browser if issues persist
 
 ---
 
 ## 🔒 Security & Privacy
 
-- **Local Storage:** All data stays on your device
+- **Password Hashing:** All passwords stored as SHA-256 hashes
+- **Session Management:** Secure session-based authentication
+- **Data Isolation:** Each user has separate database
+- **Admin Approval:** New users require admin approval
+- **Role-Based Access:** Different permissions for admin and users
+- **Local Storage:** All data stays on your server
 - **No Cloud:** No internet connection required
-- **File Security:** Keep database files secure
-- **Backups:** Store backup files safely
-- **Exports:** CSV/JSON files contain sensitive data - handle with care
+- **Backups:** Store backup files securely
 
 ---
 
 ## 💡 Tips & Best Practices
 
-1. **Regular Backups** - Create backups before major changes
-2. **Export Data** - Periodically export for redundancy
-3. **Test First** - Use a test database for training
-4. **Update Rates** - Keep metal rates current
-5. **Phone Validation** - System enforces 10-digit phone numbers
-6. **Unique Phones** - Each customer must have unique phone
+1. **Change Default Admin Password** - First priority after installation
+2. **Regular Backups** - Create backups before major changes
+3. **User Approvals** - Review user requests carefully
+4. **Export Data** - Periodically export for redundancy
+5. **Monitor Usage** - Use admin panel to monitor system usage
+6. **Update Rates** - Keep metal rates current
+7. **Phone Validation** - System enforces 10-digit phone numbers
+8. **Mobile Access** - App is optimized for mobile devices
 
 ---
 
@@ -293,8 +342,9 @@ pip install -r requirements.txt
 For issues or questions:
 1. Check this documentation
 2. Review error messages carefully
-3. Test with a backup database
-4. Open an issue on GitHub
+3. Check the admin panel for system status
+4. Test with a backup database
+5. Open an issue on GitHub
 
 ---
 
@@ -307,8 +357,8 @@ MIT License
 ## 📞 Contact
 
 **Developer:** apkarthik1986  
-**Repository:** https://github.com/apkarthik1986/JewelCalc1
+**Repository:** https://github.com/apkarthik1986/JewelCalc2
 
 ---
 
-**JewelCalc** - Clean, reliable billing for jewelry shops. 💎
+**JewelCalc** - Professional, secure billing for jewelry shops. 💎

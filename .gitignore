@@ -6,3 +6,8 @@ __pycache__/
 *.db
 customers.db
 jewelcalc.db
+backup_*.db
+jewelcalc_*.db
+*.csv
+*.json
+test_*.db

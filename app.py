@@ -1,12 +1,13 @@
 """
 JewelCalc - Jewelry Billing & Customer Management System
-A clean, streamlined Streamlit application for jewelry shops
+A professional multi-user Streamlit application for jewelry shops
 """
 import streamlit as st
 import pandas as pd
 from database import Database
 from utils import format_currency, generate_invoice_number, generate_account_number, validate_phone, calculate_item_totals
 from pdf_generator import create_invoice_pdf, get_pdf_download_link, create_thermal_invoice_pdf
+from auth import show_login_page, show_user_menu, require_auth, require_admin
 import os
 import hashlib
 import platform
@@ -34,20 +35,24 @@ st.markdown("""
     /* Remove top padding to prevent blocking navigation buttons */
     .block-container {
         padding-top: 1rem;
+        max-width: 1200px;
     }
     
     /* Custom header */
     .main-header {
-        background: linear-gradient(90deg, #e0f7fa 0%, #f5f7fa 100%);
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
         text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
     .main-header h1 {
-        color: #1565c0;
+        color: white;
         margin: 0;
         font-size: 2.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        font-weight: 700;
     }
     
     /* Cards */
@@ -59,11 +64,129 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+            padding-top: 1rem;
+        }
+        .main-header {
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .main-header h1 {
+            font-size: 1.8rem;
+        }
+        /* Make buttons stack on mobile */
+        .row-widget.stButton {
+            width: 100%;
+        }
+        /* Better mobile forms */
+        .stTextInput > div > div > input,
+        .stNumberInput > div > div > input,
+        .stSelectbox > div > div > select {
+            font-size: 16px !important;
+        }
+    }
+    
     /* Success/Error styling */
     .stSuccess {
         background-color: #d4edda;
         border-color: #c3e6cb;
         color: #155724;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    
+    .stError {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+        color: #721c24;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    
+    .stWarning {
+        background-color: #fff3cd;
+        border-color: #ffeeba;
+        color: #856404;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    
+    .stInfo {
+        background-color: #d1ecf1;
+        border-color: #bee5eb;
+        color: #0c5460;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    
+    /* Better form styling */
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+        transition: border-color 0.3s;
+    }
+    
+    .stTextInput > div > div > input:focus,
+    .stNumberInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+        border-radius: 8px;
+        background-color: white;
+        font-weight: 600;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    /* Dataframe styling */
+    .dataframe {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        font-weight: 600;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -82,18 +205,16 @@ def get_device_id():
         return "default"
 
 
-def get_device_specific_db_path():
-    """Get device-specific database path to ensure local storage per device"""
-    device_id = get_device_id()
-    return f"jewelcalc_{device_id}.db"
-
-
 # Initialize session state
 def init_session_state():
     """Initialize session state variables"""
+    # Authentication state
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    
     if 'db_path' not in st.session_state:
-        # Use device-specific database path for local storage
-        st.session_state.db_path = get_device_specific_db_path()
+        # Use a central auth database by default
+        st.session_state.db_path = "jewelcalc_auth.db"
     
     if 'metal_settings' not in st.session_state:
         st.session_state.metal_settings = {
@@ -121,67 +242,34 @@ def init_session_state():
 
 init_session_state()
 
-# Initialize database
+# Initialize database (for authentication initially)
+auth_db = Database("jewelcalc_auth.db")
+auth_db.create_admin_if_not_exists()
+
+# Check authentication
+if not require_auth(auth_db):
+    st.stop()
+
+# After login, initialize user's database
 db = Database(st.session_state.db_path)
 
 # Header
 st.markdown('<div class="main-header"><h1>💎 JewelCalc</h1></div>', unsafe_allow_html=True)
 
-# Sidebar - Database Management
-with st.sidebar:
-    st.markdown("### 🗄️ Database Management")
-    
-    # Show current database with device identifier
-    device_id = get_device_id()
-    st.info(f"📱 Device ID: `{device_id}`")
-    st.info(f"💾 Current DB: `{st.session_state.db_path}`")
-    
-    with st.expander("⚙️ Database Operations", expanded=False):
-        # Change database
-        st.markdown("**Switch Database**")
-        st.info("💡 By default, each device uses its own database. You can switch to a shared database if needed.")
-        new_db = st.text_input("Database filename", value=st.session_state.db_path, 
-                               help="Enter a .db filename. Use device-specific name for local storage or a common name to share data.")
-        if st.button("Switch Database"):
-            # Validate database filename to prevent path traversal
-            if new_db.endswith('.db') and os.path.basename(new_db) == new_db and '/' not in new_db and '\\' not in new_db:
-                st.session_state.db_path = new_db
-                st.rerun()
-            else:
-                st.error("Database filename must end with .db and contain no path separators")
-        
-        st.markdown("---")
-        
-        # Export/Import Database
-        st.markdown("**Backup & Restore**")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("💾 Backup DB"):
-                import shutil
-                from datetime import datetime
-                backup_name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-                db.export_database(backup_name)
-                st.success(f"Backup saved: {backup_name}")
-        
-        with col2:
-            restore_file = st.file_uploader("📂 Restore DB", type=['db'], key="db_restore")
-            if restore_file is not None:
-                import tempfile
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:
-                    tmp_file.write(restore_file.read())
-                    tmp_path = tmp_file.name
-                
-                if st.button("Confirm Restore"):
-                    try:
-                        db.import_database(tmp_path)
-                        st.success("Database restored successfully!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
+# Show user menu
+show_user_menu()
 
-# Main tabs
-tab1, tab2, tab3, tab4 = st.tabs(["⚙️ Settings", "👥 Customers", "📝 Create Invoice", "📋 View Invoices"])
+# Main tabs - now including Database and Admin tabs
+if require_admin():
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "⚙️ Settings", "👥 Customers", "📝 Create Invoice", 
+        "📋 View Invoices", "🗄️ Database", "🔐 Admin"
+    ])
+else:
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "⚙️ Settings", "👥 Customers", "📝 Create Invoice", 
+        "📋 View Invoices", "🗄️ Database"
+    ])
 
 # ============================================================================
 # TAB 1: SETTINGS
@@ -233,15 +321,15 @@ with tab1:
     
     # Reset All Data Section
     st.markdown("---")
-    st.markdown("#### 🔄 Reset Database")
-    st.warning("⚠️ **Danger Zone**: This will delete ALL data including customers, invoices, and settings!")
+    st.markdown("#### 🔄 Reset User Database")
+    st.warning("⚠️ **Danger Zone**: This will delete ALL your data including customers and invoices!")
     
     col1, col2 = st.columns([1, 3])
     with col1:
         if 'confirm_reset' not in st.session_state:
             st.session_state.confirm_reset = False
         
-        if st.button("🗑️ Reset All Data", type="secondary"):
+        if st.button("🗑️ Reset My Data", type="secondary"):
             st.session_state.confirm_reset = True
     
     with col2:
@@ -251,15 +339,12 @@ with tab1:
             with col_a:
                 if st.button("✅ YES, DELETE EVERYTHING", type="primary"):
                     try:
-                        # Delete the database file (validate it's in current directory)
-                        # Note: db_path is validated when set via "Switch Database" button
-                        # to ensure it contains no path separators and is just a filename
+                        # Delete the database file
                         db_path = st.session_state.db_path
-                        # Additional validation: ensure path is just a filename
                         if os.path.basename(db_path) == db_path and os.path.exists(db_path):
                             os.remove(db_path)
                         
-                        # Reset session state to defaults
+                        # Reset session state
                         st.session_state.metal_settings = {
                             'Gold 24K': {'rate': 6500.0, 'wastage': 5.0, 'making': 10.0},
                             'Gold 22K': {'rate': 6000.0, 'wastage': 6.0, 'making': 12.0},
@@ -380,36 +465,8 @@ with tab2:
                     st.success("✅ Customer deleted successfully!")
                     st.rerun()
     
-    # Import/Export Customers
-    st.markdown("---")
-    st.markdown("#### Import/Export Customers")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("📥 Export Customers (CSV)"):
-            csv_data = db.export_customers_csv()
-            st.download_button(
-                label="💾 Download CSV",
-                data=csv_data,
-                file_name="customers_export.csv",
-                mime="text/csv"
-            )
-    
-    with col2:
-        uploaded_customers = st.file_uploader("📤 Import Customers (CSV)", type=['csv'], key="import_customers")
-        if uploaded_customers is not None:
-            csv_content = uploaded_customers.read().decode('utf-8')
-            if st.button("Confirm Import Customers"):
-                imported, errors = db.import_customers_csv(csv_content)
-                if imported > 0:
-                    st.success(f"✅ Imported {imported} customers")
-                if errors:
-                    st.warning(f"⚠️ {len(errors)} errors occurred")
-                    for error in errors[:5]:  # Show first 5 errors
-                        st.error(error)
-                st.rerun()
-    
     # Show all customers
+    st.markdown("---")
     st.markdown("#### All Customers")
     if not customers_df.empty:
         search = st.text_input("🔍 Search customers", "")
@@ -586,36 +643,6 @@ with tab4:
     if invoices_df.empty:
         st.info("No invoices yet. Create your first invoice in the Create Invoice tab!")
     else:
-        # Import/Export Invoices
-        st.markdown("#### Import/Export Invoices")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("📥 Export All Invoices (JSON)"):
-                json_data = db.export_invoices_json()
-                st.download_button(
-                    label="💾 Download JSON",
-                    data=json_data,
-                    file_name="invoices_export.json",
-                    mime="application/json"
-                )
-        
-        with col2:
-            uploaded_invoices = st.file_uploader("📤 Import Invoices (JSON)", type=['json'], key="import_invoices")
-            if uploaded_invoices is not None:
-                json_content = uploaded_invoices.read().decode('utf-8')
-                if st.button("Confirm Import Invoices"):
-                    imported, errors = db.import_invoices_json(json_content)
-                    if imported > 0:
-                        st.success(f"✅ Imported {imported} invoices")
-                    if errors:
-                        st.warning(f"⚠️ {len(errors)} errors occurred")
-                        for error in errors[:5]:
-                            st.error(error)
-                    st.rerun()
-        
-        st.markdown("---")
-        
         # Search
         search = st.text_input("🔍 Search invoices", "")
         if search:
@@ -686,13 +713,31 @@ with tab4:
                         key=f"dl_{row['invoice_no']}"
                     )
                 
-                # Print (opens in new tab for printing to any connected printer)
+                # Print (opens in new tab with printer selection)
                 with col2:
                     pdf_buffer_print = create_invoice_pdf(invoice, items_df, customer)
                     import base64
                     b64 = base64.b64encode(pdf_buffer_print.read()).decode()
-                    href = f'<a href="data:application/pdf;base64,{b64}" target="_blank">🖨️ PRINT</a>'
-                    st.markdown(href, unsafe_allow_html=True)
+                    # JavaScript to trigger print dialog which allows printer selection
+                    print_js = f"""
+                    <script>
+                    function printPDF_{row['invoice_no'].replace('-', '_')}() {{
+                        var pdfWindow = window.open("");
+                        pdfWindow.document.write(
+                            "<iframe width='100%' height='100%' src='data:application/pdf;base64,{b64}'></iframe>"
+                        );
+                        setTimeout(function() {{
+                            pdfWindow.print();
+                        }}, 250);
+                    }}
+                    </script>
+                    <button onclick="printPDF_{row['invoice_no'].replace('-', '_')}()" 
+                            style="background-color:#ff4b4b; color:white; border:none; 
+                            padding:0.5rem 1rem; border-radius:0.5rem; cursor:pointer;">
+                        🖨️ Print
+                    </button>
+                    """
+                    st.markdown(print_js, unsafe_allow_html=True)
                 
                 # Thermal print
                 with col3:
@@ -835,3 +880,282 @@ with tab4:
                             if 'temp_edit_items_invoice_id' in st.session_state:
                                 del st.session_state.temp_edit_items_invoice_id
                             st.rerun()
+
+
+# ============================================================================
+# TAB 5: DATABASE MANAGEMENT
+# ============================================================================
+with tab5:
+    st.markdown("### 🗄️ Database Management")
+    
+    from datetime import datetime
+    
+    # Show current database info
+    st.info(f"💾 Current Database: `{st.session_state.db_path}`")
+    
+    # Backup & Restore
+    st.markdown("#### Backup & Restore")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Create Backup**")
+        if st.button("💾 Backup Database", use_container_width=True):
+            import shutil
+            from datetime import datetime
+            backup_name = f"backup_{st.session_state.username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+            try:
+                db.export_database(backup_name)
+                st.success(f"✅ Backup created: {backup_name}")
+                
+                # Provide download link
+                with open(backup_name, 'rb') as f:
+                    st.download_button(
+                        label="⬇️ Download Backup",
+                        data=f,
+                        file_name=backup_name,
+                        mime="application/octet-stream"
+                    )
+            except Exception as e:
+                st.error(f"Error creating backup: {str(e)}")
+    
+    with col2:
+        st.markdown("**Restore from Backup**")
+        restore_file = st.file_uploader("📂 Upload Database Backup", type=['db'], key="db_restore")
+        if restore_file is not None:
+            if st.button("⬆️ Restore Database", use_container_width=True):
+                import tempfile
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:
+                        tmp_file.write(restore_file.read())
+                        tmp_path = tmp_file.name
+                    
+                    db.import_database(tmp_path)
+                    os.unlink(tmp_path)  # Clean up temp file
+                    st.success("✅ Database restored successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error restoring database: {str(e)}")
+    
+    st.markdown("---")
+    
+    # Import/Export Data
+    st.markdown("#### Import/Export Data")
+    
+    # Customers Import/Export
+    st.markdown("**Customers**")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📥 Export Customers (CSV)", use_container_width=True):
+            csv_data = db.export_customers_csv()
+            st.download_button(
+                label="💾 Download CSV",
+                data=csv_data,
+                file_name=f"customers_{st.session_state.username}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                key="download_customers_csv"
+            )
+    
+    with col2:
+        uploaded_customers = st.file_uploader("📤 Import Customers (CSV)", type=['csv'], key="import_customers")
+        if uploaded_customers is not None:
+            csv_content = uploaded_customers.read().decode('utf-8')
+            if st.button("⬆️ Import Customers", use_container_width=True):
+                imported, errors = db.import_customers_csv(csv_content)
+                if imported > 0:
+                    st.success(f"✅ Imported {imported} customers")
+                if errors:
+                    st.warning(f"⚠️ {len(errors)} errors occurred")
+                    for error in errors[:5]:
+                        st.error(error)
+                st.rerun()
+    
+    st.markdown("---")
+    
+    # Invoices Import/Export
+    st.markdown("**Invoices**")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📥 Export Invoices (JSON)", use_container_width=True):
+            json_data = db.export_invoices_json()
+            from datetime import datetime
+            st.download_button(
+                label="💾 Download JSON",
+                data=json_data,
+                file_name=f"invoices_{st.session_state.username}_{datetime.now().strftime('%Y%m%d')}.json",
+                mime="application/json",
+                key="download_invoices_json"
+            )
+    
+    with col2:
+        uploaded_invoices = st.file_uploader("📤 Import Invoices (JSON)", type=['json'], key="import_invoices")
+        if uploaded_invoices is not None:
+            json_content = uploaded_invoices.read().decode('utf-8')
+            if st.button("⬆️ Import Invoices", use_container_width=True):
+                imported, errors = db.import_invoices_json(json_content)
+                if imported > 0:
+                    st.success(f"✅ Imported {imported} invoices")
+                if errors:
+                    st.warning(f"⚠️ {len(errors)} errors occurred")
+                    for error in errors[:5]:
+                        st.error(error)
+                st.rerun()
+
+
+# ============================================================================
+# TAB 6: ADMIN PANEL (Only visible to admin)
+# ============================================================================
+if require_admin():
+    with tab6:
+        st.markdown("### 🔐 Admin Panel")
+        
+        # User Management
+        st.markdown("#### User Management")
+        
+        # Pending Approvals
+        pending_users = auth_db.get_pending_users()
+        if not pending_users.empty:
+            st.markdown("**Pending Approval Requests**")
+            st.warning(f"⏳ {len(pending_users)} user(s) waiting for approval")
+            
+            for _, user in pending_users.iterrows():
+                with st.expander(f"👤 {user['username']} - {user['full_name']}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Username:** {user['username']}")
+                        st.markdown(f"**Full Name:** {user['full_name']}")
+                        st.markdown(f"**Email:** {user.get('email', 'N/A')}")
+                    with col2:
+                        st.markdown(f"**Phone:** {user.get('phone', 'N/A')}")
+                        st.markdown(f"**Requested:** {user['created_at']}")
+                    
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        if st.button("✅ Approve", key=f"approve_{user['id']}", use_container_width=True):
+                            auth_db.approve_user(user['id'], st.session_state.user_id)
+                            st.success(f"✅ User {user['username']} approved!")
+                            st.rerun()
+                    with col_b:
+                        if st.button("❌ Reject", key=f"reject_{user['id']}", use_container_width=True):
+                            auth_db.reject_user(user['id'])
+                            st.success(f"❌ User {user['username']} rejected!")
+                            st.rerun()
+        else:
+            st.info("✅ No pending approval requests")
+        
+        st.markdown("---")
+        
+        # All Users
+        st.markdown("#### All Users")
+        all_users = auth_db.get_all_users()
+        
+        if not all_users.empty:
+            # Filter controls
+            col1, col2 = st.columns(2)
+            with col1:
+                status_filter = st.selectbox("Filter by Status", ["All", "Approved", "Pending"])
+            with col2:
+                role_filter = st.selectbox("Filter by Role", ["All", "Admin", "User"])
+            
+            # Apply filters
+            filtered_users = all_users.copy()
+            if status_filter != "All":
+                filtered_users = filtered_users[filtered_users['status'] == status_filter.lower()]
+            if role_filter != "All":
+                filtered_users = filtered_users[filtered_users['role'] == role_filter.lower()]
+            
+            # Display users
+            for _, user in filtered_users.iterrows():
+                with st.expander(f"👤 {user['username']} ({user['role'].title()}) - {user['status'].title()}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Username:** {user['username']}")
+                        st.markdown(f"**Full Name:** {user['full_name']}")
+                        st.markdown(f"**Email:** {user.get('email', 'N/A')}")
+                        st.markdown(f"**Phone:** {user.get('phone', 'N/A')}")
+                    with col2:
+                        st.markdown(f"**Role:** {user['role'].title()}")
+                        st.markdown(f"**Status:** {user['status'].title()}")
+                        st.markdown(f"**Created:** {user['created_at']}")
+                        if user.get('approved_at'):
+                            st.markdown(f"**Approved:** {user['approved_at']}")
+                    
+                    # Admin actions
+                    if user['username'] != 'admin':  # Prevent admin from modifying the default admin
+                        st.markdown("**Actions:**")
+                        col_a, col_b, col_c = st.columns(3)
+                        
+                        with col_a:
+                            new_role = st.selectbox(
+                                "Change Role",
+                                ["user", "admin"],
+                                index=0 if user['role'] == 'user' else 1,
+                                key=f"role_{user['id']}"
+                            )
+                            if st.button("Update Role", key=f"update_role_{user['id']}"):
+                                auth_db.update_user_role(user['id'], new_role)
+                                st.success(f"✅ Role updated to {new_role}")
+                                st.rerun()
+                        
+                        with col_b:
+                            # View user's database
+                            user_db_path = f'jewelcalc_user_{user["id"]}.db'
+                            if os.path.exists(user_db_path):
+                                st.info(f"📊 Database exists")
+                                # Could add stats here
+                            else:
+                                st.warning("No database yet")
+                        
+                        with col_c:
+                            if st.button("🗑️ Delete User", key=f"delete_{user['id']}", type="secondary"):
+                                if st.session_state.get(f'confirm_delete_{user["id"]}'):
+                                    auth_db.reject_user(user['id'])
+                                    st.success(f"✅ User deleted")
+                                    st.rerun()
+                                else:
+                                    st.session_state[f'confirm_delete_{user["id"]}'] = True
+                                    st.warning("Click again to confirm")
+        else:
+            st.info("No users in the system")
+        
+        st.markdown("---")
+        
+        # Database Statistics
+        st.markdown("#### Database Overview")
+        
+        # Get all user databases
+        import glob
+        user_dbs = glob.glob('jewelcalc_user_*.db')
+        
+        if user_dbs:
+            st.markdown(f"**Total User Databases:** {len(user_dbs)}")
+            
+            # Show statistics for each user database
+            for db_file in user_dbs:
+                try:
+                    user_db = Database(db_file)
+                    customers = user_db.get_customers()
+                    invoices = user_db.get_invoices()
+                    
+                    user_id = db_file.replace('jewelcalc_user_', '').replace('.db', '')
+                    user_info = all_users[all_users['id'] == int(user_id)]
+                    username = user_info.iloc[0]['username'] if not user_info.empty else f"User {user_id}"
+                    
+                    with st.expander(f"📊 {username} - {db_file}"):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Customers", len(customers))
+                        with col2:
+                            st.metric("Invoices", len(invoices))
+                        with col3:
+                            if not invoices.empty:
+                                total_revenue = invoices['total'].sum()
+                                st.metric("Total Revenue", format_currency(total_revenue))
+                            else:
+                                st.metric("Total Revenue", format_currency(0))
+                except Exception as e:
+                    st.error(f"Error reading {db_file}: {str(e)}")
+        else:
+            st.info("No user databases found")
+
