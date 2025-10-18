@@ -838,7 +838,6 @@ with tab4:
                         st.session_state.editing_invoice_no = row['invoice_no']
                         st.rerun()
                 
-# --- Replace the existing "Edit invoice form" block with the following code ---
                     # Edit invoice form
                     if st.session_state.get('editing_invoice_id') == invoice['id']:
                         st.markdown("---")
@@ -997,12 +996,12 @@ with tab4:
                                     'making_amount': 0.0,
                                     'line_total': 0.0
                                 })
-                                st.experimental_rerun()
+                                st.rerun()
                         with col_b:
                             if st.button("🗑️ Remove Last Item", key=f"remove_last_{invoice['id']}"):
                                 if st.session_state.temp_edit_items:
                                     st.session_state.temp_edit_items.pop()
-                                st.experimental_rerun()
+                                st.rerun()
                         
                         # Edit discount (live)
                         edit_discount = st.number_input(
@@ -1065,7 +1064,6 @@ with tab4:
                                     if k in st.session_state:
                                         del st.session_state[k]
                                 st.rerun()
-# --- End replacement block ---
 
 
 # ============================================================================
