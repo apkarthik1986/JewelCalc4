@@ -293,7 +293,7 @@ with tab1:
     edited_metals = st.data_editor(
         df_metals,
         num_rows="dynamic",
-        `width='stretch',
+        width='stretch',
         key="metals_editor"
     )
     
@@ -304,7 +304,7 @@ with tab1:
     with col2:
         sgst = st.number_input("SGST %", value=st.session_state.sgst, min_value=0.0, format="%.2f")
     
-    if st.button("💾 Save Settings", `width='stretch'):
+    if st.button("💾 Save Settings", width='stretch'):
         # Update metal settings
         new_settings = {}
         for _, row in edited_metals.iterrows():
@@ -394,7 +394,7 @@ with tab2:
             phone = st.text_input("Phone Number * (10 digits)")
             address = st.text_area("Address")
         
-        if st.button("➕ Add Customer", `width='stretch'):
+        if st.button("➕ Add Customer", width='stretch'):
             if not name or not phone:
                 st.error("Name and phone are required")
             elif not validate_phone(phone):
