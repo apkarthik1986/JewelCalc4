@@ -832,6 +832,12 @@ with tab4:
                     )
                 
                 # Edit invoice button
+                with col4:
+                    if st.button("✏️ Edit Invoice", key=f"edit_{row['invoice_no']}", use_container_width=True):
+                        st.session_state.editing_invoice_id = invoice['id']
+                        st.session_state.editing_invoice_no = row['invoice_no']
+                        st.rerun()
+                
 # --- Replace the existing "Edit invoice form" block with the following code ---
                     # Edit invoice form
                     if st.session_state.get('editing_invoice_id') == invoice['id']:
