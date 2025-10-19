@@ -3,6 +3,7 @@ import hashlib
 import os
 import streamlit as st
 from utils import validate_phone  # added import for phone validation
+from datetime import datetime
 
 
 def hash_password(password):
@@ -72,6 +73,7 @@ def show_login_page(db):
                         st.session_state.username = user['username']
                         st.session_state.user_role = user['role']
                         st.session_state.user_full_name = user['full_name']
+                        st.session_state.last_activity = datetime.now()  # Initialize session activity time
                         
                         # Set user-specific database path
                         if user['role'] == 'admin':
@@ -100,9 +102,7 @@ def show_login_page(db):
                     if pl < 10:
                         st.warning(f"⚠️ {pl}/10 digits - Need {10 - pl} more")
                     elif pl == 10:
-                        if new_phone.isdigit():
-                            st.success("✅ 10/10 digits - Valid!")
-                        else:
+                        if not new_phone.isdigit():
                             st.error("❌ Only digits allowed")
             
             new_password = st.text_input("Password *", type="password", help="Choose a strong password")
@@ -148,9 +148,7 @@ def show_login_page(db):
                 if pl < 10:
                     st.warning(f"⚠️ {pl}/10 digits - Need {10 - pl} more")
                 elif pl == 10:
-                    if forgot_phone.isdigit():
-                        st.success("✅ 10/10 digits - Valid!")
-                    else:
+                    if not forgot_phone.isdigit():
                         st.error("❌ Only digits allowed")
             
             request_type = st.radio(
@@ -244,9 +242,7 @@ def show_user_menu():
                     if pl < 10:
                         st.warning(f"⚠️ {pl}/10 digits - Need {10 - pl} more")
                     elif pl == 10:
-                        if profile_phone.isdigit():
-                            st.success("✅ 10/10 digits - Valid!")
-                        else:
+                        if not profile_phone.isdigit():
                             st.error("❌ Only digits allowed")
                 
                 update_profile_submit = st.form_submit_button("Update Profile")
@@ -269,30 +265,40 @@ def show_user_menu():
             st.markdown("---")
             st.markdown("#### Change Password")
             
+            # Initialize form reset flag if not exists
+            if 'reset_password_form' not in st.session_state:
+                st.session_state.reset_password_form = False
+            
             with st.form("change_password_form"):
-                current_password = st.text_input("Current Password", type="password")
-                new_password = st.text_input("New Password", type="password")
-                confirm_new_password = st.text_input("Confirm New Password", type="password")
+                current_password = st.text_input("Current Password", type="password", value="" if st.session_state.reset_password_form else "")
+                new_password = st.text_input("New Password", type="password", value="" if st.session_state.reset_password_form else "")
+                confirm_new_password = st.text_input("Confirm New Password", type="password", value="" if st.session_state.reset_password_form else "")
                 
                 change_pwd_submit = st.form_submit_button("Update Password")
                 
                 if change_pwd_submit:
                     if not current_password or not new_password or not confirm_new_password:
                         st.error("All fields are required")
+                        st.session_state.reset_password_form = False
                     elif new_password != confirm_new_password:
                         st.error("New passwords do not match")
+                        st.session_state.reset_password_form = False
                     elif len(new_password) < 6:
                         st.error("Password must be at least 6 characters long")
+                        st.session_state.reset_password_form = False
                     else:
                         # Verify current password
                         user = auth_db.get_user_by_username(st.session_state.username)
                         if not verify_password(current_password, user['password_hash']):
                             st.error("❌ Current password is incorrect")
+                            st.session_state.reset_password_form = False
                         else:
                             # Update password
                             new_hash = hash_password(new_password)
                             auth_db.update_user_password(st.session_state.user_id, new_hash)
                             st.success("✅ Password updated successfully!")
+                            st.session_state.reset_password_form = True
+                            st.rerun()
         
         # Show "Back to Admin Login" button only for admins (but not when viewing as another user)
         if st.session_state.get('user_role') == 'admin' and not st.session_state.get('admin_return_id'):
