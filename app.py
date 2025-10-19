@@ -1214,6 +1214,26 @@ if require_admin():
     with tab6:
         st.markdown("### 🔐 Admin Panel")
         
+        # Quick "Return to Login Screen" for admins:
+        # This provides a one-click way to go back to the login screen. We preserve a small
+        # snapshot of admin info in session_state.saved_admin_snapshot so the admin can
+        # restore manually if desired (not automatic restoration here).
+        if st.session_state.get('user_role') == 'admin':
+            if st.button("🔁 Return to Login Screen (Quick)"):
+                st.session_state.saved_admin_snapshot = {
+                    'user_id': st.session_state.get('user_id'),
+                    'username': st.session_state.get('username'),
+                    'user_role': st.session_state.get('user_role'),
+                    'user_full_name': st.session_state.get('user_full_name'),
+                    'db_path': st.session_state.get('db_path')
+                }
+                # Clear login flags to show login page
+                for k in ('logged_in', 'user_id', 'username', 'user_role', 'user_full_name', 'db_path'):
+                    if k in st.session_state:
+                        del st.session_state[k]
+                st.success("Returned to login screen. Your admin session snapshot is saved for this tab (not auto-restored).")
+                st.rerun()
+        
         # Create sub-tabs for different admin functions
         admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs([
             "👥 User Management", 
@@ -1378,11 +1398,21 @@ if require_admin():
             with st.form("admin_create_user_form"):
                 col1, col2 = st.columns(2)
                 with col1:
-                    create_username = st.text_input("Username *")
+                    create_username = st.text_input("Username *", help="Choose a unique username")
                     create_full_name = st.text_input("Full Name *")
                     create_email = st.text_input("Email")
                 with col2:
                     create_phone = st.text_input("Phone Number (10 digits)", max_chars=10)
+                    # Visual feedback for phone number (real-time)
+                    if create_phone:
+                        pl = len(create_phone)
+                        if pl < 10:
+                            st.warning(f"⚠️ {pl}/10 digits - Need {10 - pl} more")
+                        elif pl == 10:
+                            if create_phone.isdigit():
+                                st.success("✅ 10/10 digits - Valid!")
+                            else:
+                                st.error("❌ Only digits allowed")
                     create_role = st.selectbox("Role", ["user", "admin"])
                     create_password = st.text_input("Password *", type="password")
                 
@@ -1393,6 +1423,8 @@ if require_admin():
                         st.error("Username, full name, and password are required")
                     elif len(create_password) < 6:
                         st.error("Password must be at least 6 characters long")
+                    elif create_phone and not validate_phone(create_phone):
+                        st.error("Phone must be exactly 10 digits")
                     else:
                         try:
                             # Check if username already exists
@@ -1413,7 +1445,7 @@ if require_admin():
                                     st.session_state.user_id
                                 )
                                 st.success(f"✅ User '{create_username}' created successfully! User ID: {user_id}")
-                                st.warning("⚠️ **Important**: Securely communicate the password to the user through a secure channel (not shown here for security reasons). Consider requiring users to change their password on first login.")
+                                st.warning("⚠️ **Important**: Securely communicate the password to the user through a secure channel (not shown here for security reasons). Consider requiring users[...]
                                 st.balloons()
                         except Exception as e:
                             st.error(f"Error creating user: {str(e)}")
