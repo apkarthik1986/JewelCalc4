@@ -1445,7 +1445,8 @@ if require_admin():
                                     st.session_state.user_id
                                 )
                                 st.success(f"✅ User '{create_username}' created successfully! User ID: {user_id}")
-                                st.warning("⚠️ **Important**: Securely communicate the password to the user through a secure channel (not shown here for security reasons). Consider requiring users[...]
+                                # Fix: properly terminated informational warning string
+                                st.warning("⚠️ Important: Securely communicate the password to the user through a secure channel (not shown here for security reasons). Consider requiring users to change their password on first login.")
                                 st.balloons()
                         except Exception as e:
                             st.error(f"Error creating user: {str(e)}")
