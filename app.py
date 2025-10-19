@@ -427,8 +427,6 @@ with tab2:
                         st.success("✅ 10/10 digits - Valid!")
                     else:
                         st.error("❌ Only digits allowed")
-                else:
-                    st.error(f"❌ {phone_len}/10 digits - {phone_len - 10} too many")
             address = st.text_area("Address")
         
         if st.button("➕ Add Customer", width='stretch'):
@@ -491,8 +489,6 @@ with tab2:
                                     st.success("✅ 10/10 digits - Valid!")
                                 else:
                                     st.error("❌ Only digits allowed")
-                            else:
-                                st.error(f"❌ {phone_len}/10 digits - {phone_len - 10} too many")
                         address = st.text_area("Address", value=customer.get('address', ''))
                     
                     if st.button("💾 Update Customer", width='stretch'):
