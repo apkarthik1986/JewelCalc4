@@ -1,7 +1,9 @@
+```python
 """Authentication module for JewelCalc"""
 import hashlib
 import os
 import streamlit as st
+from utils import validate_phone  # added import for phone validation
 
 
 def hash_password(password):
@@ -92,7 +94,17 @@ def show_login_page(db):
                 new_full_name = st.text_input("Full Name *")
             with col2:
                 new_email = st.text_input("Email")
-                new_phone = st.text_input("Phone Number")
+                new_phone = st.text_input("Phone Number", max_chars=10)
+                # Visual feedback for phone number in signup
+                if new_phone:
+                    pl = len(new_phone)
+                    if pl < 10:
+                        st.warning(f"⚠️ {pl}/10 digits - Need {10 - pl} more")
+                    elif pl == 10:
+                        if new_phone.isdigit():
+                            st.success("✅ 10/10 digits - Valid!")
+                        else:
+                            st.error("❌ Only digits allowed")
             
             new_password = st.text_input("Password *", type="password", help="Choose a strong password")
             confirm_password = st.text_input("Confirm Password *", type="password")
@@ -106,6 +118,8 @@ def show_login_page(db):
                     st.error("Passwords do not match")
                 elif len(new_password) < 6:
                     st.error("Password must be at least 6 characters long")
+                elif new_phone and not validate_phone(new_phone):
+                    st.error("Phone must be exactly 10 digits")
                 else:
                     try:
                         # Check if username already exists
@@ -128,7 +142,17 @@ def show_login_page(db):
         with st.form("forgot_password_form"):
             forgot_username = st.text_input("Username (optional)", help="If you know your username")
             forgot_email = st.text_input("Email", help="Your registered email")
-            forgot_phone = st.text_input("Phone", help="Your registered phone number")
+            forgot_phone = st.text_input("Phone", help="Your registered phone number", max_chars=10)
+            # Visual feedback for forgot phone input
+            if forgot_phone:
+                pl = len(forgot_phone)
+                if pl < 10:
+                    st.warning(f"⚠️ {pl}/10 digits - Need {10 - pl} more")
+                elif pl == 10:
+                    if forgot_phone.isdigit():
+                        st.success("✅ 10/10 digits - Valid!")
+                    else:
+                        st.error("❌ Only digits allowed")
             
             request_type = st.radio(
                 "What do you need help with?",
@@ -150,17 +174,21 @@ def show_login_page(db):
                             "Forgot Both": "both"
                         }
                         
-                        request_id = db.create_password_reset_request(
-                            forgot_username, 
-                            forgot_email, 
-                            forgot_phone, 
-                            request_type_map[request_type]
-                        )
-                        if request_id:
-                            st.success("✅ Your request has been submitted! An administrator will review it shortly.")
-                            st.info("💡 Please contact your administrator if you don't hear back within 24 hours.")
+                        # validate phone if provided
+                        if forgot_phone and not validate_phone(forgot_phone):
+                            st.error("Phone must be exactly 10 digits")
                         else:
-                            st.error("❌ No user found with the provided information. Please check and try again.")
+                            request_id = db.create_password_reset_request(
+                                forgot_username, 
+                                forgot_email, 
+                                forgot_phone, 
+                                request_type_map[request_type]
+                            )
+                            if request_id:
+                                st.success("✅ Your request has been submitted! An administrator will review it shortly.")
+                                st.info("💡 Please contact your administrator if you don't hear back within 24 hours.")
+                            else:
+                                st.error("❌ No user found with the provided information. Please check and try again.")
                     except Exception as e:
                         st.error(f"Error submitting request: {str(e)}")
 
@@ -210,7 +238,17 @@ def show_user_menu():
             st.markdown("#### Update Profile")
             with st.form("update_profile_form"):
                 profile_email = st.text_input("Email", value=user.get('email', ''))
-                profile_phone = st.text_input("Phone Number", value=user.get('phone', ''))
+                profile_phone = st.text_input("Phone Number", value=user.get('phone', ''), max_chars=10)
+                # Real-time feedback for profile phone
+                if profile_phone:
+                    pl = len(profile_phone)
+                    if pl < 10:
+                        st.warning(f"⚠️ {pl}/10 digits - Need {10 - pl} more")
+                    elif pl == 10:
+                        if profile_phone.isdigit():
+                            st.success("✅ 10/10 digits - Valid!")
+                        else:
+                            st.error("❌ Only digits allowed")
                 
                 update_profile_submit = st.form_submit_button("Update Profile")
                 
@@ -281,3 +319,4 @@ def require_auth(db):
 def require_admin():
     """Check if current user is admin"""
     return st.session_state.get('user_role') == 'admin'
+```
