@@ -198,6 +198,31 @@ class Database:
         conn.commit()
         conn.close()
     
+    def update_user_profile(self, user_id, email=None, phone=None):
+        """Update user profile (email and phone)"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # Build dynamic update query based on provided fields
+        updates = []
+        params = []
+        
+        if email is not None:
+            updates.append('email=?')
+            params.append(email)
+        
+        if phone is not None:
+            updates.append('phone=?')
+            params.append(phone)
+        
+        if updates:
+            params.append(user_id)
+            query = f'UPDATE users SET {", ".join(updates)} WHERE id=?'
+            cursor.execute(query, params)
+            conn.commit()
+        
+        conn.close()
+    
     def add_user_with_approval(self, username, password_hash, full_name, email="", phone="", role="user", admin_id=None):
         """Add a new user with immediate approval (for admin creation)"""
         conn = self.get_connection()

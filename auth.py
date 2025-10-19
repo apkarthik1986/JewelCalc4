@@ -203,6 +203,33 @@ def show_user_menu():
         
         # Profile/Settings expander
         with st.expander("⚙️ Profile Settings"):
+            from database import Database
+            auth_db = Database("jewelcalc_auth.db")
+            user = auth_db.get_user_by_username(st.session_state.username)
+            
+            st.markdown("#### Update Profile")
+            with st.form("update_profile_form"):
+                profile_email = st.text_input("Email", value=user.get('email', ''))
+                profile_phone = st.text_input("Phone Number", value=user.get('phone', ''))
+                
+                update_profile_submit = st.form_submit_button("Update Profile")
+                
+                if update_profile_submit:
+                    from utils import validate_phone
+                    
+                    if profile_phone and not validate_phone(profile_phone):
+                        st.error("Phone must be exactly 10 digits")
+                    else:
+                        # Update profile
+                        auth_db.update_user_profile(
+                            st.session_state.user_id,
+                            email=profile_email if profile_email else None,
+                            phone=profile_phone if profile_phone else None
+                        )
+                        st.success("✅ Profile updated successfully!")
+                        st.rerun()
+            
+            st.markdown("---")
             st.markdown("#### Change Password")
             
             with st.form("change_password_form"):
@@ -213,9 +240,6 @@ def show_user_menu():
                 change_pwd_submit = st.form_submit_button("Update Password")
                 
                 if change_pwd_submit:
-                    from database import Database
-                    auth_db = Database("jewelcalc_auth.db")
-                    
                     if not current_password or not new_password or not confirm_new_password:
                         st.error("All fields are required")
                     elif new_password != confirm_new_password:
