@@ -563,6 +563,20 @@ class Database:
         conn.commit()
         conn.close()
     
+    def delete_invoice(self, invoice_id):
+        """Delete an invoice and its items"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # Delete invoice items first (foreign key constraint)
+        cursor.execute('DELETE FROM invoice_items WHERE invoice_id=?', (invoice_id,))
+        
+        # Delete invoice
+        cursor.execute('DELETE FROM invoices WHERE id=?', (invoice_id,))
+        
+        conn.commit()
+        conn.close()
+    
     # Import/Export operations
     def export_customers_csv(self):
         """Export customers to CSV format"""
