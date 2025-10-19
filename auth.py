@@ -1,4 +1,3 @@
-```python
 """Authentication module for JewelCalc"""
 import hashlib
 import os
@@ -319,4 +318,3 @@ def require_auth(db):
 def require_admin():
     """Check if current user is admin"""
     return st.session_state.get('user_role') == 'admin'
-```
