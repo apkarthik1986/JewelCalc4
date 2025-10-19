@@ -254,6 +254,10 @@ def init_session_state():
             'Silver': {'rate': 75.0, 'wastage': 3.0, 'making': 8.0}
         }
     
+    # Custom fields for admin (additional charges beyond wastage and making)
+    if 'custom_fields' not in st.session_state:
+        st.session_state.custom_fields = []  # List of custom field names
+    
     if 'cgst' not in st.session_state:
         st.session_state.cgst = 1.5
     
@@ -355,6 +359,44 @@ with tab_settings:
     with col2:
         sgst = st.number_input("SGST %", value=st.session_state.sgst, min_value=0.0, format="%.2f")
     
+    # Custom Fields (Admin Only)
+    if require_admin():
+        st.markdown("---")
+        st.markdown("#### 🎯 Custom Fields (Admin Only)")
+        st.info("💡 Add custom percentage-based charges (e.g., 'Polish', 'Stone Setting', 'Labor') in addition to Wastage and Making")
+        
+        # Display existing custom fields
+        if st.session_state.custom_fields:
+            st.markdown("**Current Custom Fields:**")
+            custom_fields_display = []
+            for field in st.session_state.custom_fields:
+                custom_fields_display.append({'Field Name': field})
+            
+            df_custom = pd.DataFrame(custom_fields_display)
+            edited_custom = st.data_editor(
+                df_custom,
+                num_rows="dynamic",
+                width='stretch',
+                key="custom_fields_editor"
+            )
+        else:
+            st.info("No custom fields defined yet. Add fields below.")
+            edited_custom = pd.DataFrame(columns=['Field Name'])
+        
+        # Add new custom field
+        col_a, col_b = st.columns([3, 1])
+        with col_a:
+            new_field_name = st.text_input("New Custom Field Name", placeholder="e.g., Polish, Stone Setting")
+        with col_b:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("➕ Add Field"):
+                if new_field_name and new_field_name not in st.session_state.custom_fields:
+                    st.session_state.custom_fields.append(new_field_name)
+                    st.success(f"✅ Added custom field: {new_field_name}")
+                    st.rerun()
+                elif new_field_name in st.session_state.custom_fields:
+                    st.warning("Field already exists!")
+    
     if st.button("💾 Save Settings", width='stretch'):
         # Update metal settings
         new_settings = {}
@@ -368,6 +410,16 @@ with tab_settings:
         st.session_state.metal_settings = new_settings
         st.session_state.cgst = cgst
         st.session_state.sgst = sgst
+        
+        # Update custom fields if admin
+        if require_admin() and 'edited_custom' in locals():
+            new_custom_fields = []
+            for _, row in edited_custom.iterrows():
+                field_name = str(row.get('Field Name', '')).strip()
+                if field_name:
+                    new_custom_fields.append(field_name)
+            st.session_state.custom_fields = new_custom_fields
+        
         st.success("✅ Settings saved successfully!")
 
 
