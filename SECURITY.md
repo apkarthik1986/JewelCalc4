@@ -1,4 +1,4 @@
-# Security Summary for JewelCalc2
+# Security Summary for JewelCalc
 
 ## Overview
 
