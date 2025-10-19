@@ -365,12 +365,14 @@ with tab_settings:
         st.markdown("#### 🎯 Custom Fields (Admin Only)")
         st.info("💡 Add custom percentage-based charges (e.g., 'Polish', 'Stone Setting', 'Labor') in addition to Wastage and Making")
         
+        CUSTOM_FIELD_COL = 'Field Name'
+        
         # Display existing custom fields
         if st.session_state.custom_fields:
             st.markdown("**Current Custom Fields:**")
             custom_fields_display = []
             for field in st.session_state.custom_fields:
-                custom_fields_display.append({'Field Name': field})
+                custom_fields_display.append({CUSTOM_FIELD_COL: field})
             
             df_custom = pd.DataFrame(custom_fields_display)
             edited_custom = st.data_editor(
@@ -381,7 +383,7 @@ with tab_settings:
             )
         else:
             st.info("No custom fields defined yet. Add fields below.")
-            edited_custom = pd.DataFrame(columns=['Field Name'])
+            edited_custom = pd.DataFrame(columns=[CUSTOM_FIELD_COL])
         
         # Add new custom field
         col_a, col_b = st.columns([3, 1])
@@ -390,12 +392,17 @@ with tab_settings:
         with col_b:
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("➕ Add Field"):
-                if new_field_name and new_field_name not in st.session_state.custom_fields:
+                # Validate field name
+                if not new_field_name:
+                    st.error("Field name cannot be empty")
+                elif not new_field_name.replace(' ', '').replace('_', '').isalnum():
+                    st.error("Field name can only contain letters, numbers, spaces, and underscores")
+                elif new_field_name in st.session_state.custom_fields:
+                    st.warning("Field already exists!")
+                else:
                     st.session_state.custom_fields.append(new_field_name)
                     st.success(f"✅ Added custom field: {new_field_name}")
                     st.rerun()
-                elif new_field_name in st.session_state.custom_fields:
-                    st.warning("Field already exists!")
     
     if st.button("💾 Save Settings", width='stretch'):
         # Update metal settings
@@ -412,11 +419,13 @@ with tab_settings:
         st.session_state.sgst = sgst
         
         # Update custom fields if admin
-        if require_admin() and 'edited_custom' in locals():
+        if require_admin():
+            CUSTOM_FIELD_COL = 'Field Name'
             new_custom_fields = []
             for _, row in edited_custom.iterrows():
-                field_name = str(row.get('Field Name', '')).strip()
-                if field_name:
+                field_name = str(row.get(CUSTOM_FIELD_COL, '')).strip()
+                # Validate field name
+                if field_name and field_name.replace(' ', '').replace('_', '').isalnum():
                     new_custom_fields.append(field_name)
             st.session_state.custom_fields = new_custom_fields
         
