@@ -224,6 +224,17 @@ def show_user_menu():
                             auth_db.update_user_password(st.session_state.user_id, new_hash)
                             st.success("✅ Password updated successfully!")
         
+        # Show "Back to Admin Login" button only for admins
+        if st.session_state.get('user_role') == 'admin':
+            if st.button("🔙 Back to Admin Login", use_container_width=True, type="secondary"):
+                # Clear session state to return to login page
+                for key in ['logged_in', 'user_id', 'username', 'user_role', 'user_full_name', 
+                           'admin_return_id', 'admin_return_username', 'admin_return_role', 
+                           'admin_return_fullname', 'admin_return_dbpath']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.rerun()
+        
         if st.button("🚪 Logout", use_container_width=True):
             # Clear session state
             for key in ['logged_in', 'user_id', 'username', 'user_role', 'user_full_name', 
