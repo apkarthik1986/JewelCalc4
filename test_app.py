@@ -72,6 +72,13 @@ def test_authentication():
     assert verify_password('newpass456', user['password_hash']), "Password should be updated"
     print("✓ Update user password works correctly")
     
+    # Test 7.5: Update user profile
+    db.update_user_profile(user_id, email='updated@test.com', phone='5555555555')
+    user = db.get_user_by_username('testuser')
+    assert user['email'] == 'updated@test.com', "Email should be updated"
+    assert user['phone'] == '5555555555', "Phone should be updated"
+    print("✓ Update user profile works correctly")
+    
     # Test 8: Add user with immediate approval (admin creation)
     admin_created_user_id = db.add_user_with_approval(
         'adminuser', 
