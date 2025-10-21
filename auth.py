@@ -309,13 +309,6 @@ def show_user_menu():
                             st.session_state.reset_password_form = True
                             st.rerun()
         
-        # Show "Back to Admin Login" button only for admins (but not when viewing as another user)
-        if st.session_state.get('user_role') == 'admin' and not st.session_state.get('admin_return_id'):
-            if st.button("🔙 Back to Admin Login", use_container_width=True, type="secondary"):
-                # Clear session state to return to login page
-                _clear_session_state()
-                st.rerun()
-        
         if st.button("🚪 Logout", use_container_width=True):
             # Clear session state
             _clear_session_state()

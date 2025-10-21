@@ -301,10 +301,10 @@ def load_user_settings(db):
 
 
 def check_session_timeout():
-    """Check if session has timed out (1 hour of inactivity)"""
+    """Check if session has timed out (4 hours of inactivity)"""
     if st.session_state.get('logged_in') and 'last_activity' in st.session_state:
         from datetime import timedelta
-        timeout_duration = timedelta(hours=1)
+        timeout_duration = timedelta(hours=4)
         time_since_activity = datetime.now() - st.session_state.last_activity
         
         if time_since_activity > timeout_duration:
@@ -345,14 +345,14 @@ show_user_menu()
 
 # Main tabs - now including Database, Reports and Admin tabs
 if require_admin():
-    tab_customers, tab_invoice, tab_view, tab_reports, tab_database, tab_settings, tab_admin = st.tabs([
-        "👥 Customers", "📝 Create Invoice", 
-        "📋 View Invoices", "📊 Reports", "🗄️ Database", "⚙️ Settings", "🔐 Admin"
+    tab_settings, tab_customers, tab_invoice, tab_view, tab_reports, tab_database, tab_admin = st.tabs([
+        "⚙️ Settings", "👥 Customers", "📝 Create Invoice", 
+        "📋 View Invoices", "📊 Reports", "🗄️ Database", "🔐 Admin"
     ])
 else:
-    tab_customers, tab_invoice, tab_view, tab_reports, tab_database, tab_settings = st.tabs([
-        "👥 Customers", "📝 Create Invoice", 
-        "📋 View Invoices", "📊 Reports", "🗄️ Database", "⚙️ Settings"
+    tab_settings, tab_customers, tab_invoice, tab_view, tab_reports, tab_database = st.tabs([
+        "⚙️ Settings", "👥 Customers", "📝 Create Invoice", 
+        "📋 View Invoices", "📊 Reports", "🗄️ Database"
     ])
 
 # ============================================================================
@@ -945,10 +945,7 @@ with tab_view:
                 with col3:
                     if st.button("📋 Duplicate", key=f"duplicate_{row['invoice_no']}", use_container_width=True):
                         # Generate new invoice number
-                        existing_invoices = db.get_invoices()
-                        new_invoice_no = generate_invoice_number(
-                            existing_invoices['invoice_no'].tolist() if not existing_invoices.empty else []
-                        )
+                        new_invoice_no = generate_invoice_number()
                         try:
                             new_id = db.duplicate_invoice(invoice['id'], new_invoice_no)
                             if new_id:
@@ -1237,17 +1234,17 @@ with tab_reports:
             end_date_str = end_date.strftime("%Y-%m-%d")
         elif report_period == "Today":
             start_date_str = datetime.now().strftime("%Y-%m-%d")
-            end_date_str = start_date_str
+            end_date_str = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
         elif report_period == "This Week":
             today = datetime.now().date()
             start_of_week = today - timedelta(days=today.weekday())
             start_date_str = start_of_week.strftime("%Y-%m-%d")
-            end_date_str = datetime.now().strftime("%Y-%m-%d")
+            end_date_str = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
         else:  # This Month
             today = datetime.now().date()
             start_of_month = today.replace(day=1)
             start_date_str = start_of_month.strftime("%Y-%m-%d")
-            end_date_str = datetime.now().strftime("%Y-%m-%d")
+            end_date_str = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
         
         # Get sales report
         sales_df = db.get_sales_report(start_date_str, end_date_str)
@@ -1892,25 +1889,33 @@ if require_admin():
         with admin_tab4:
             st.markdown("#### Database Overview")
             
-            # Get all user databases
+            # Get all user databases and admin database
             import glob
             user_dbs = glob.glob('jewelcalc_user_*.db')
             
-            if user_dbs:
-                st.markdown(f"**Total User Databases:** {len(user_dbs)}")
+            # Include admin database if it exists
+            admin_db_path = 'jewelcalc_admin.db'
+            all_dbs = []
+            if os.path.exists(admin_db_path):
+                all_dbs.append(('admin', admin_db_path, 'Admin'))
+            
+            for db_file in user_dbs:
+                user_id = db_file.replace('jewelcalc_user_', '').replace('.db', '')
+                user_info = all_users[all_users['id'] == int(user_id)]
+                username = user_info.iloc[0]['username'] if not user_info.empty else f"User {user_id}"
+                all_dbs.append(('user', db_file, username))
+            
+            if all_dbs:
+                st.markdown(f"**Total Databases:** {len(all_dbs)} (including admin)")
                 
-                # Show statistics for each user database
-                for db_file in user_dbs:
+                # Show statistics for each database
+                for db_type, db_file, display_name in all_dbs:
                     try:
                         user_db = Database(db_file)
                         customers = user_db.get_customers()
                         invoices = user_db.get_invoices()
                         
-                        user_id = db_file.replace('jewelcalc_user_', '').replace('.db', '')
-                        user_info = all_users[all_users['id'] == int(user_id)]
-                        username = user_info.iloc[0]['username'] if not user_info.empty else f"User {user_id}"
-                        
-                        with st.expander(f"📊 {username} - {db_file}"):
+                        with st.expander(f"📊 {display_name} - {db_file}"):
                             col1, col2, col3 = st.columns(3)
                             with col1:
                                 st.metric("Customers", len(customers))
@@ -1925,4 +1930,4 @@ if require_admin():
                     except Exception as e:
                         st.error(f"Error reading {db_file}: {str(e)}")
             else:
-                st.info("No user databases found")
+                st.info("No databases found")
