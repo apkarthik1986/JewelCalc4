@@ -1392,8 +1392,19 @@ with tab_database:
     # Show current database info
     st.info(f"💾 Current Database: `{st.session_state.db_path}`")
     
+    # Cloud backup reminder
+    st.markdown("#### ☁️ Cloud Backup Recommendation")
+    st.info("""
+    💡 **Best Practice for Cloud Backup:**
+    1. Click "💾 Backup Database" below to create a backup
+    2. Download the backup file to your device
+    3. Upload to your preferred cloud storage (Google Drive, Dropbox, OneDrive, etc.)
+    4. Set up automatic sync with your cloud storage folder for continuous backup
+    5. Schedule regular backups (recommended: daily or weekly)
+    """)
+    
     # Backup & Restore
-    st.markdown("#### Backup & Restore")
+    st.markdown("#### 📦 Backup & Restore")
     col1, col2 = st.columns(2)
     
     with col1:
