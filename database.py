@@ -89,6 +89,16 @@ class Database:
             )
         ''')
         
+        # Settings table for persistent user settings
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT UNIQUE NOT NULL,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        ''')
+        
         # Invoice items table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS invoice_items (
@@ -710,3 +720,213 @@ class Database:
         shutil.copy2(source_path, self.db_path)
         self._init_database()  # Ensure tables exist
         return True
+    
+    # Settings operations for persistent storage
+    def save_setting(self, key, value):
+        """Save a setting to the database"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Convert value to JSON string for storage
+        value_json = json.dumps(value)
+        cursor.execute(
+            'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)',
+            (key, value_json, now)
+        )
+        conn.commit()
+        conn.close()
+    
+    def get_setting(self, key, default=None):
+        """Get a setting from the database"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT value FROM settings WHERE key = ?', (key,))
+        result = cursor.fetchone()
+        conn.close()
+        if result:
+            # Parse JSON string back to original type
+            return json.loads(result[0])
+        return default
+    
+    def delete_setting(self, key):
+        """Delete a setting from the database"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM settings WHERE key = ?', (key,))
+        conn.commit()
+        conn.close()
+    
+    # Reporting functions
+    def get_sales_report(self, start_date=None, end_date=None):
+        """Get sales report for a date range"""
+        conn = self.get_connection()
+        query = '''
+            SELECT 
+                i.date,
+                i.invoice_no,
+                c.name as customer_name,
+                c.account_no,
+                i.subtotal,
+                i.discount_amount,
+                i.cgst_amount,
+                i.sgst_amount,
+                i.total
+            FROM invoices i
+            JOIN customers c ON i.customer_id = c.id
+        '''
+        params = []
+        if start_date and end_date:
+            query += ' WHERE i.date BETWEEN ? AND ?'
+            params = [start_date, end_date]
+        elif start_date:
+            query += ' WHERE i.date >= ?'
+            params = [start_date]
+        elif end_date:
+            query += ' WHERE i.date <= ?'
+            params = [end_date]
+        
+        query += ' ORDER BY i.date DESC'
+        
+        df = pd.read_sql_query(query, conn, params=params if params else None)
+        conn.close()
+        return df
+    
+    def get_customer_purchase_analysis(self, customer_id=None):
+        """Get customer-wise purchase analysis"""
+        conn = self.get_connection()
+        
+        if customer_id:
+            query = '''
+                SELECT 
+                    c.account_no,
+                    c.name,
+                    c.phone,
+                    COUNT(i.id) as invoice_count,
+                    SUM(i.subtotal) as total_subtotal,
+                    SUM(i.discount_amount) as total_discount,
+                    SUM(i.total) as total_amount,
+                    MIN(i.date) as first_purchase,
+                    MAX(i.date) as last_purchase
+                FROM customers c
+                LEFT JOIN invoices i ON c.id = i.customer_id
+                WHERE c.id = ?
+                GROUP BY c.id, c.account_no, c.name, c.phone
+            '''
+            params = (customer_id,)
+        else:
+            query = '''
+                SELECT 
+                    c.account_no,
+                    c.name,
+                    c.phone,
+                    COUNT(i.id) as invoice_count,
+                    SUM(i.subtotal) as total_subtotal,
+                    SUM(i.discount_amount) as total_discount,
+                    SUM(i.total) as total_amount,
+                    MIN(i.date) as first_purchase,
+                    MAX(i.date) as last_purchase
+                FROM customers c
+                LEFT JOIN invoices i ON c.id = i.customer_id
+                GROUP BY c.id, c.account_no, c.name, c.phone
+                ORDER BY total_amount DESC
+            '''
+            params = None
+        
+        df = pd.read_sql_query(query, conn, params=params)
+        conn.close()
+        return df
+    
+    def get_category_report(self):
+        """Get category (metal type) wise report"""
+        conn = self.get_connection()
+        query = '''
+            SELECT 
+                ii.metal,
+                COUNT(DISTINCT ii.invoice_id) as invoice_count,
+                SUM(ii.weight) as total_weight,
+                AVG(ii.rate) as avg_rate,
+                SUM(ii.item_value) as total_item_value,
+                SUM(ii.wastage_amount) as total_wastage,
+                SUM(ii.making_amount) as total_making,
+                SUM(ii.line_total) as total_amount
+            FROM invoice_items ii
+            GROUP BY ii.metal
+            ORDER BY total_amount DESC
+        '''
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        return df
+    
+    def duplicate_invoice(self, invoice_id, new_invoice_no):
+        """Duplicate an existing invoice with a new invoice number"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Get original invoice
+            cursor.execute('SELECT * FROM invoices WHERE id = ?', (invoice_id,))
+            invoice = cursor.fetchone()
+            
+            if not invoice:
+                conn.close()
+                return None
+            
+            # Get invoice items
+            cursor.execute('SELECT * FROM invoice_items WHERE invoice_id = ?', (invoice_id,))
+            items = cursor.fetchall()
+            
+            # Insert new invoice with today's date
+            today = datetime.now().strftime("%Y-%m-%d")
+            cursor.execute('''
+                INSERT INTO invoices 
+                (invoice_no, customer_id, date, subtotal, cgst_percent, sgst_percent, 
+                 cgst_amount, sgst_amount, discount_percent, discount_amount, total)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                new_invoice_no,
+                invoice[2],  # customer_id (index 2)
+                today,       # new date
+                invoice[4],  # subtotal (index 4)
+                invoice[5],  # cgst_percent (index 5)
+                invoice[6],  # sgst_percent (index 6)
+                invoice[7],  # cgst_amount (index 7)
+                invoice[8],  # sgst_amount (index 8)
+                invoice[9],  # discount_percent (index 9)
+                invoice[10], # discount_amount (index 10)
+                invoice[11]  # total (index 11)
+            ))
+            
+            new_invoice_id = cursor.lastrowid
+            
+            # Copy all items to new invoice
+            # invoice_items schema: id, invoice_id, item_no, metal, weight, rate, 
+            #                       wastage_percent, making_percent, item_value, 
+            #                       wastage_amount, making_amount, line_total
+            for item in items:
+                cursor.execute('''
+                    INSERT INTO invoice_items 
+                    (invoice_id, item_no, metal, weight, rate, wastage_percent, 
+                     making_percent, item_value, wastage_amount, making_amount, line_total)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    new_invoice_id,
+                    item[2],   # item_no (index 2)
+                    item[3],   # metal (index 3)
+                    item[4],   # weight (index 4)
+                    item[5],   # rate (index 5)
+                    item[6],   # wastage_percent (index 6)
+                    item[7],   # making_percent (index 7)
+                    item[8],   # item_value (index 8)
+                    item[9],   # wastage_amount (index 9)
+                    item[10],  # making_amount (index 10)
+                    item[11]   # line_total (index 11)
+                ))
+            
+            conn.commit()
+            conn.close()
+            return new_invoice_id
+            
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            raise e

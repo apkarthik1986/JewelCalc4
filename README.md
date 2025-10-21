@@ -24,7 +24,11 @@ JewelCalc is designed for jewellery shops to manage customers, create invoices w
 
 ### Advanced Features
 - **✏️ Invoice Editing** - Edit existing invoices, add/remove items
+- **📋 Invoice Duplication** - Duplicate existing invoices with one click
+- **📊 Business Reports** - Daily/monthly sales reports, customer analysis, category reports
 - **📥📤 Import/Export** - Export/import customers (CSV) and invoices (JSON)
+- **☁️ Cloud Backup Support** - Easy backup and restore with cloud storage guidance
+- **💾 Persistent Settings** - Settings saved to database, survive page refresh
 - **🔄 User Approval Workflow** - Admin reviews and approves new user registrations
 - **👑 Role-Based Access** - Admin and regular user roles with different permissions
 - **📊 Admin Dashboard** - View statistics across all user databases
@@ -102,6 +106,8 @@ JewelCalc is designed for jewellery shops to manage customers, create invoices w
 3. Set wastage % and making % for each metal
 4. Configure CGST and SGST percentages
 5. Click **💾 Save Settings**
+6. **Note:** Settings are automatically saved to database and persist across sessions
+7. Use **🔄 Reset to Default Settings** to restore original values
 
 **Step 2: Add Customers**
 1. Go to **👥 Customers** tab
@@ -120,11 +126,37 @@ JewelCalc is designed for jewellery shops to manage customers, create invoices w
 1. Go to **📋 View Invoices** tab
 2. Browse or search for invoices
 3. Click on an invoice to expand details
-4. Use **📄 Download PDF** or **🖨️ Print**
+4. Use **📄 Download PDF**, **🧾 Thermal Print**, **✏️ Edit**, **📋 Duplicate**, or **🗑️ Delete**
+
+### Reports & Analytics
+
+Navigate to **📊 Reports** tab for:
+
+**Sales Reports:**
+- View sales by day, week, month, or custom date range
+- See total sales, discounts, and taxes
+- Export detailed reports to CSV
+
+**Customer Analysis:**
+- View all customers' purchase history
+- Analyze individual customer purchases
+- Track first and last purchase dates
+- Export customer analytics to CSV
+
+**Category Reports:**
+- Metal-wise sales breakdown
+- Total weight and value by metal type
+- Average rates and totals
+- Export category reports to CSV
 
 ### Database Management
 
 Navigate to **🗄️ Database** tab for:
+
+**Cloud Backup Guidance:**
+- Follow best practices for cloud backup
+- Download backups to sync with Google Drive, Dropbox, OneDrive, etc.
+- Set up automatic backup schedules
 
 **Backup & Restore:**
 - Create backups of your database
@@ -165,11 +197,19 @@ Access **🔐 Admin** tab (admins only) for:
 - **Admin Oversight**: Admins can view statistics across all databases
 
 ### Security Features
-- Password hashing (SHA-256)
+- Password hashing (PBKDF2-HMAC-SHA256)
 - Session-based authentication
 - Role-based access control
 - Admin approval workflow
 - Separate database per user
+- Persistent settings with secure storage
+
+### User Experience
+- **Session Persistence**: Settings and preferences survive page refresh
+- **No Logout on Refresh**: Users remain logged in when refreshing the page
+- **Streamlined Phone Input**: Clean validation without unnecessary messages
+- **Quick Invoice Duplication**: Copy existing invoices with one click
+- **Comprehensive Reports**: Multiple report types with export options
 
 ---
 
@@ -311,13 +351,17 @@ pip install streamlit pandas reportlab
 ## 💡 Tips & Best Practices
 
 1. **Change Default Admin Password** - First priority after installation
-2. **Regular Backups** - Create backups before major changes
-3. **User Approvals** - Review user requests carefully
-4. **Export Data** - Periodically export for redundancy
-5. **Monitor Usage** - Use admin panel to monitor system usage
-6. **Update Rates** - Keep metal rates current
-7. **Phone Validation** - System enforces 10-digit phone numbers
-8. **Mobile Access** - App is optimized for mobile devices
+2. **Regular Backups** - Create backups daily/weekly and sync to cloud storage
+3. **Cloud Backup Setup** - Upload backups to Google Drive, Dropbox, or OneDrive
+4. **User Approvals** - Review user requests carefully
+5. **Export Data** - Periodically export for redundancy
+6. **Monitor Usage** - Use admin panel and reports to monitor system usage
+7. **Update Rates** - Keep metal rates current (settings persist automatically)
+8. **Use Reports** - Generate regular sales and customer reports for business insights
+9. **Phone Validation** - System enforces 10-digit phone numbers
+10. **Mobile Access** - App is optimized for mobile devices
+11. **Duplicate Invoices** - Use duplicate feature for similar orders to save time
+12. **Settings Persist** - Your settings are saved automatically and survive page refresh
 
 ---
 

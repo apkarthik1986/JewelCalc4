@@ -191,12 +191,21 @@ def show_login_page(db):
 
 
 def _clear_session_state():
-    """Helper function to clear all session state variables"""
-    for key in ['logged_in', 'user_id', 'username', 'user_role', 'user_full_name', 
-               'admin_return_id', 'admin_return_username', 'admin_return_role', 
-               'admin_return_fullname', 'admin_return_dbpath']:
+    """Helper function to clear all session state variables except persistent settings"""
+    # Keys to clear on logout
+    keys_to_clear = ['logged_in', 'user_id', 'username', 'user_role', 'user_full_name', 
+                     'admin_return_id', 'admin_return_username', 'admin_return_role', 
+                     'admin_return_fullname', 'admin_return_dbpath',
+                     'current_invoice_items', 'selected_customer_id', 'discount',
+                     'editing_invoice_id', 'editing_invoice_no', 'temp_edit_items', 
+                     'temp_edit_items_invoice_id']
+    
+    for key in keys_to_clear:
         if key in st.session_state:
             del st.session_state[key]
+    
+    # Mark settings as not loaded so they'll be reloaded on next login
+    st.session_state.settings_loaded = False
 
 
 def show_user_menu():
