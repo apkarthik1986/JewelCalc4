@@ -898,7 +898,8 @@ with tab_view:
         for _, row in invoices_df.iterrows():
             # Create a unique key suffix for widgets in this invoice
             # Use row id and database path to ensure uniqueness across all databases
-            unique_key_suffix = f"{row['id']}_{row.get('db_path', 'default').replace('.', '_').replace('/', '_')}"
+            db_path_key = str(row.get('db_path', 'default')).replace('.', '_').replace('/', '_')
+            unique_key_suffix = f"{row['id']}_{db_path_key}"
             
             # For admin viewing all databases, show database source in title
             if require_admin() and 'database' in row and pd.notna(row.get('database')):
