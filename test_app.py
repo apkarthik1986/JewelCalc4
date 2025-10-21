@@ -194,6 +194,38 @@ def test_database_operations():
     assert len(json_data) > 0, "JSON export should have data"
     print("✓ Export invoices to JSON works")
     
+    # Test 9: Settings persistence
+    test_settings = {'Gold 24K': {'rate': 7000.0, 'wastage': 6.0, 'making': 11.0}}
+    db.save_setting('test_metal_settings', test_settings)
+    retrieved_settings = db.get_setting('test_metal_settings')
+    assert retrieved_settings == test_settings, "Settings should be saved and retrieved correctly"
+    print("✓ Settings persistence works correctly")
+    
+    # Test 10: Duplicate invoice
+    invoices = db.get_invoices()
+    original_invoice_id = int(invoices.iloc[0]['id'])
+    new_invoice_id = db.duplicate_invoice(original_invoice_id, 'INV-00002')
+    assert new_invoice_id is not None, f"Invoice should be duplicated, got {new_invoice_id}"
+    duplicated_invoice, dup_items_df, _ = db.get_invoice_by_number('INV-00002')
+    assert duplicated_invoice is not None, "Duplicated invoice should exist"
+    assert len(dup_items_df) == 1, "Duplicated invoice should have same items"
+    print("✓ Invoice duplication works correctly")
+    
+    # Test 11: Sales report
+    sales_report = db.get_sales_report()
+    assert len(sales_report) >= 2, "Sales report should have at least 2 invoices"
+    print("✓ Sales report generation works correctly")
+    
+    # Test 12: Customer purchase analysis
+    customer_analysis = db.get_customer_purchase_analysis()
+    assert len(customer_analysis) >= 1, "Customer analysis should have data"
+    print("✓ Customer purchase analysis works correctly")
+    
+    # Test 13: Category report
+    category_report = db.get_category_report()
+    assert len(category_report) >= 1, "Category report should have data"
+    print("✓ Category report generation works correctly")
+    
     print("✅ Database operations tests passed!\n")
 
 def test_utility_functions():

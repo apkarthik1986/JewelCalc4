@@ -246,6 +246,7 @@ def init_session_state():
         # Use a central auth database by default
         st.session_state.db_path = "jewelcalc_auth.db"
     
+    # Load metal settings from database if logged in, otherwise use defaults
     if 'metal_settings' not in st.session_state:
         st.session_state.metal_settings = {
             'Gold 24K': {'rate': 6500.0, 'wastage': 5.0, 'making': 10.0},
@@ -272,6 +273,31 @@ def init_session_state():
     
     if 'discount' not in st.session_state:
         st.session_state.discount = 0.0
+
+
+def load_user_settings(db):
+    """Load user settings from database after login"""
+    if st.session_state.get('logged_in') and st.session_state.get('settings_loaded') != True:
+        # Load metal settings
+        saved_metal_settings = db.get_setting('metal_settings')
+        if saved_metal_settings:
+            st.session_state.metal_settings = saved_metal_settings
+        
+        # Load tax settings
+        saved_cgst = db.get_setting('cgst')
+        if saved_cgst is not None:
+            st.session_state.cgst = saved_cgst
+        
+        saved_sgst = db.get_setting('sgst')
+        if saved_sgst is not None:
+            st.session_state.sgst = saved_sgst
+        
+        # Load custom fields
+        saved_custom_fields = db.get_setting('custom_fields')
+        if saved_custom_fields:
+            st.session_state.custom_fields = saved_custom_fields
+        
+        st.session_state.settings_loaded = True
 
 
 def check_session_timeout():
@@ -308,22 +334,25 @@ if not require_auth(auth_db):
 # After login, initialize user's database
 db = Database(st.session_state.db_path)
 
+# Load user settings from database
+load_user_settings(db)
+
 # Header
 st.markdown('<div class="main-header"><h1>💎 JewelCalc</h1></div>', unsafe_allow_html=True)
 
 # Show user menu
 show_user_menu()
 
-# Main tabs - now including Database and Admin tabs
+# Main tabs - now including Database, Reports and Admin tabs
 if require_admin():
-    tab_customers, tab_invoice, tab_view, tab_database, tab_settings, tab_admin = st.tabs([
+    tab_customers, tab_invoice, tab_view, tab_reports, tab_database, tab_settings, tab_admin = st.tabs([
         "👥 Customers", "📝 Create Invoice", 
-        "📋 View Invoices", "🗄️ Database", "⚙️ Settings", "🔐 Admin"
+        "📋 View Invoices", "📊 Reports", "🗄️ Database", "⚙️ Settings", "🔐 Admin"
     ])
 else:
-    tab_customers, tab_invoice, tab_view, tab_database, tab_settings = st.tabs([
+    tab_customers, tab_invoice, tab_view, tab_reports, tab_database, tab_settings = st.tabs([
         "👥 Customers", "📝 Create Invoice", 
-        "📋 View Invoices", "🗄️ Database", "⚙️ Settings"
+        "📋 View Invoices", "📊 Reports", "🗄️ Database", "⚙️ Settings"
     ])
 
 # ============================================================================
@@ -404,7 +433,7 @@ with tab_settings:
                     st.success(f"✅ Added custom field: {new_field_name}")
                     st.rerun()
     
-    if st.button("💾 Save Settings", width='stretch'):
+    if st.button("💾 Save Settings", use_container_width=True):
         # Update metal settings
         new_settings = {}
         for _, row in edited_metals.iterrows():
@@ -429,7 +458,47 @@ with tab_settings:
                     new_custom_fields.append(field_name)
             st.session_state.custom_fields = new_custom_fields
         
+        # Persist settings to database
+        db.save_setting('metal_settings', new_settings)
+        db.save_setting('cgst', cgst)
+        db.save_setting('sgst', sgst)
+        if require_admin():
+            db.save_setting('custom_fields', new_custom_fields)
+        
         st.success("✅ Settings saved successfully!")
+    
+    st.markdown("---")
+    
+    # Reset settings to defaults
+    st.markdown("#### 🔄 Reset Settings")
+    st.warning("⚠️ This will reset all settings to default values")
+    
+    if st.button("🔄 Reset to Default Settings", type="secondary"):
+        if st.session_state.get('confirm_reset_settings'):
+            # Reset to defaults
+            default_settings = {
+                'Gold 24K': {'rate': 6500.0, 'wastage': 5.0, 'making': 10.0},
+                'Gold 22K': {'rate': 6000.0, 'wastage': 6.0, 'making': 12.0},
+                'Gold 18K': {'rate': 5500.0, 'wastage': 7.0, 'making': 14.0},
+                'Silver': {'rate': 75.0, 'wastage': 3.0, 'making': 8.0}
+            }
+            st.session_state.metal_settings = default_settings
+            st.session_state.cgst = 1.5
+            st.session_state.sgst = 1.5
+            st.session_state.custom_fields = []
+            
+            # Save to database
+            db.save_setting('metal_settings', default_settings)
+            db.save_setting('cgst', 1.5)
+            db.save_setting('sgst', 1.5)
+            db.save_setting('custom_fields', [])
+            
+            st.session_state.confirm_reset_settings = False
+            st.success("✅ Settings reset to defaults!")
+            st.rerun()
+        else:
+            st.session_state.confirm_reset_settings = True
+            st.warning("⚠️ Click again to confirm reset")
 
 
 # ============================================================================
@@ -461,9 +530,7 @@ with tab_customers:
                 if phone_len < 10:
                     st.warning(f"⚠️ {phone_len}/10 digits - Need {10 - phone_len} more")
                 elif phone_len == 10:
-                    if phone.isdigit():
-                        st.success("✅ 10/10 digits - Valid!")
-                    else:
+                    if not phone.isdigit():
                         st.error("❌ Only digits allowed")
             address = st.text_area("Address")
         
@@ -523,9 +590,7 @@ with tab_customers:
                             if phone_len < 10:
                                 st.warning(f"⚠️ {phone_len}/10 digits - Need {10 - phone_len} more")
                             elif phone_len == 10:
-                                if phone.isdigit():
-                                    st.success("✅ 10/10 digits - Valid!")
-                                else:
+                                if not phone.isdigit():
                                     st.error("❌ Only digits allowed")
                         address = st.text_area("Address", value=customer.get('address', ''))
                     
@@ -847,7 +912,7 @@ with tab_view:
                 st.markdown("---")
                 
                 # Action buttons
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3, col4, col5 = st.columns(5)
                 
                 # PDF download (direct download)
                 with col1:
@@ -864,9 +929,46 @@ with tab_view:
                     if st.session_state.get(f'pdf_downloaded_{row["invoice_no"]}'):
                         st.success("✅ PDF downloaded!")
                 
-                # Delete Invoice button (replaces Print)
+                # Thermal print
                 with col2:
-                    if st.button("🗑️ Delete Invoice", key=f"delete_{row['invoice_no']}", use_container_width=True, type="secondary"):
+                    from pdf_generator import create_thermal_invoice_pdf
+                    thermal_buffer = create_thermal_invoice_pdf(invoice, items_df, customer)
+                    st.download_button(
+                        label="🧾 Thermal Print",
+                        data=thermal_buffer,
+                        file_name=f"{row['invoice_no']}_thermal.pdf",
+                        mime="application/pdf",
+                        key=f"thermal_{row['invoice_no']}"
+                    )
+                
+                # Duplicate invoice button
+                with col3:
+                    if st.button("📋 Duplicate", key=f"duplicate_{row['invoice_no']}", use_container_width=True):
+                        # Generate new invoice number
+                        existing_invoices = db.get_invoices()
+                        new_invoice_no = generate_invoice_number(
+                            existing_invoices['invoice_no'].tolist() if not existing_invoices.empty else []
+                        )
+                        try:
+                            new_id = db.duplicate_invoice(invoice['id'], new_invoice_no)
+                            if new_id:
+                                st.success(f"✅ Invoice duplicated as {new_invoice_no}!")
+                                st.rerun()
+                            else:
+                                st.error("Error duplicating invoice")
+                        except Exception as e:
+                            st.error(f"Error duplicating invoice: {str(e)}")
+                
+                # Edit invoice button
+                with col4:
+                    if st.button("✏️ Edit Invoice", key=f"edit_{row['invoice_no']}", use_container_width=True):
+                        st.session_state.editing_invoice_id = invoice['id']
+                        st.session_state.editing_invoice_no = row['invoice_no']
+                        st.rerun()
+                
+                # Delete Invoice button
+                with col5:
+                    if st.button("🗑️ Delete", key=f"delete_{row['invoice_no']}", use_container_width=True, type="secondary"):
                         if st.session_state.get(f'confirm_delete_invoice_{invoice["id"]}'):
                             try:
                                 db.delete_invoice(invoice['id'])
@@ -879,25 +981,6 @@ with tab_view:
                         else:
                             st.session_state[f'confirm_delete_invoice_{invoice["id"]}'] = True
                             st.warning("⚠️ Click again to confirm deletion")
-                
-                # Thermal print
-                with col3:
-                    from pdf_generator import create_thermal_invoice_pdf
-                    thermal_buffer = create_thermal_invoice_pdf(invoice, items_df, customer)
-                    st.download_button(
-                        label="🧾 Thermal Print",
-                        data=thermal_buffer,
-                        file_name=f"{row['invoice_no']}_thermal.pdf",
-                        mime="application/pdf",
-                        key=f"thermal_{row['invoice_no']}"
-                    )
-                
-                # Edit invoice button
-                with col4:
-                    if st.button("✏️ Edit Invoice", key=f"edit_{row['invoice_no']}", use_container_width=True):
-                        st.session_state.editing_invoice_id = invoice['id']
-                        st.session_state.editing_invoice_no = row['invoice_no']
-                        st.rerun()
                 
                     # Edit invoice form
                     if st.session_state.get('editing_invoice_id') == invoice['id']:
@@ -1118,6 +1201,184 @@ with tab_view:
                                     if k in st.session_state:
                                         del st.session_state[k]
                                 st.rerun()
+
+
+# ============================================================================
+# TAB 4.5: REPORTS
+# ============================================================================
+with tab_reports:
+    st.markdown("### 📊 Reports & Analysis")
+    
+    report_type = st.radio(
+        "Select Report Type",
+        ["📅 Sales Report", "👥 Customer Analysis", "📦 Category Report"],
+        horizontal=True
+    )
+    
+    if report_type == "📅 Sales Report":
+        st.markdown("#### Sales Report")
+        st.info("View daily, monthly, or custom date range sales reports")
+        
+        # Date range selector
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            report_period = st.selectbox(
+                "Period",
+                ["Today", "This Week", "This Month", "Custom Range"]
+            )
+        
+        if report_period == "Custom Range":
+            with col2:
+                start_date = st.date_input("Start Date", value=datetime.now().date() - timedelta(days=30))
+            with col3:
+                end_date = st.date_input("End Date", value=datetime.now().date())
+            
+            start_date_str = start_date.strftime("%Y-%m-%d")
+            end_date_str = end_date.strftime("%Y-%m-%d")
+        elif report_period == "Today":
+            start_date_str = datetime.now().strftime("%Y-%m-%d")
+            end_date_str = start_date_str
+        elif report_period == "This Week":
+            today = datetime.now().date()
+            start_of_week = today - timedelta(days=today.weekday())
+            start_date_str = start_of_week.strftime("%Y-%m-%d")
+            end_date_str = datetime.now().strftime("%Y-%m-%d")
+        else:  # This Month
+            today = datetime.now().date()
+            start_of_month = today.replace(day=1)
+            start_date_str = start_of_month.strftime("%Y-%m-%d")
+            end_date_str = datetime.now().strftime("%Y-%m-%d")
+        
+        # Get sales report
+        sales_df = db.get_sales_report(start_date_str, end_date_str)
+        
+        if not sales_df.empty:
+            st.markdown(f"**Report Period:** {start_date_str} to {end_date_str}")
+            st.markdown(f"**Total Invoices:** {len(sales_df)}")
+            
+            # Summary metrics
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Sales", format_currency(sales_df['total'].sum()))
+            with col2:
+                st.metric("Subtotal", format_currency(sales_df['subtotal'].sum()))
+            with col3:
+                st.metric("Total Discount", format_currency(sales_df['discount_amount'].sum()))
+            with col4:
+                st.metric("Total Tax", format_currency(sales_df['cgst_amount'].sum() + sales_df['sgst_amount'].sum()))
+            
+            st.markdown("---")
+            
+            # Display detailed report
+            st.markdown("**Detailed Sales Report:**")
+            display_df = sales_df.copy()
+            display_df['subtotal'] = display_df['subtotal'].apply(format_currency)
+            display_df['discount_amount'] = display_df['discount_amount'].apply(format_currency)
+            display_df['cgst_amount'] = display_df['cgst_amount'].apply(format_currency)
+            display_df['sgst_amount'] = display_df['sgst_amount'].apply(format_currency)
+            display_df['total'] = display_df['total'].apply(format_currency)
+            
+            st.dataframe(display_df, width='stretch', hide_index=True)
+            
+            # Export option
+            csv_data = sales_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Export to CSV",
+                data=csv_data,
+                file_name=f"sales_report_{start_date_str}_to_{end_date_str}.csv",
+                mime="text/csv"
+            )
+        else:
+            st.info("No sales data found for the selected period")
+    
+    elif report_type == "👥 Customer Analysis":
+        st.markdown("#### Customer Purchase Analysis")
+        st.info("View customer-wise purchase history and statistics")
+        
+        # Option to view all customers or specific customer
+        analysis_type = st.radio(
+            "Analysis Type",
+            ["All Customers", "Specific Customer"],
+            horizontal=True
+        )
+        
+        if analysis_type == "Specific Customer":
+            customers_df = db.get_customers()
+            if not customers_df.empty:
+                customer_options = {f"{row['name']} ({row['account_no']})": row['id'] 
+                                   for _, row in customers_df.iterrows()}
+                selected_customer = st.selectbox("Select Customer", options=list(customer_options.keys()))
+                customer_id = customer_options[selected_customer]
+                analysis_df = db.get_customer_purchase_analysis(customer_id)
+            else:
+                st.warning("No customers found")
+                analysis_df = pd.DataFrame()
+        else:
+            analysis_df = db.get_customer_purchase_analysis()
+        
+        if not analysis_df.empty:
+            st.markdown("**Customer Purchase Summary:**")
+            
+            # Display analysis
+            display_df = analysis_df.copy()
+            display_df['total_subtotal'] = display_df['total_subtotal'].fillna(0).apply(format_currency)
+            display_df['total_discount'] = display_df['total_discount'].fillna(0).apply(format_currency)
+            display_df['total_amount'] = display_df['total_amount'].fillna(0).apply(format_currency)
+            display_df['invoice_count'] = display_df['invoice_count'].fillna(0).astype(int)
+            
+            st.dataframe(display_df, width='stretch', hide_index=True)
+            
+            # Export option
+            csv_data = analysis_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Export to CSV",
+                data=csv_data,
+                file_name=f"customer_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
+        else:
+            st.info("No customer purchase data found")
+    
+    else:  # Category Report
+        st.markdown("#### Category (Metal Type) Wise Report")
+        st.info("View sales breakdown by metal type")
+        
+        category_df = db.get_category_report()
+        
+        if not category_df.empty:
+            # Display summary
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Categories", len(category_df))
+            with col2:
+                st.metric("Total Weight", f"{category_df['total_weight'].sum():.3f}g")
+            with col3:
+                st.metric("Total Value", format_currency(category_df['total_amount'].sum()))
+            
+            st.markdown("---")
+            
+            # Display category report
+            st.markdown("**Category Breakdown:**")
+            display_df = category_df.copy()
+            display_df['total_weight'] = display_df['total_weight'].apply(lambda x: f"{x:.3f}g")
+            display_df['avg_rate'] = display_df['avg_rate'].apply(format_currency)
+            display_df['total_item_value'] = display_df['total_item_value'].apply(format_currency)
+            display_df['total_wastage'] = display_df['total_wastage'].apply(format_currency)
+            display_df['total_making'] = display_df['total_making'].apply(format_currency)
+            display_df['total_amount'] = display_df['total_amount'].apply(format_currency)
+            
+            st.dataframe(display_df, width='stretch', hide_index=True)
+            
+            # Export option
+            csv_data = category_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Export to CSV",
+                data=csv_data,
+                file_name=f"category_report_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
+        else:
+            st.info("No category data found")
 
 
 # ============================================================================
@@ -1493,9 +1754,7 @@ if require_admin():
                         if pl < 10:
                             st.warning(f"⚠️ {pl}/10 digits - Need {10 - pl} more")
                         elif pl == 10:
-                            if create_phone.isdigit():
-                                st.success("✅ 10/10 digits - Valid!")
-                            else:
+                            if not create_phone.isdigit():
                                 st.error("❌ Only digits allowed")
                     create_role = st.selectbox("Role", ["user", "admin"])
                     create_password = st.text_input("Password *", type="password")
