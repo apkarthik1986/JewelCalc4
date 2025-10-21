@@ -512,9 +512,14 @@ with tab_customers:
     
     # Admin sees all customers from all databases
     if require_admin():
-        customers_df = db.get_all_customers_admin()
-        if not customers_df.empty:
-            st.info(f"🔐 **Admin View**: Showing {len(customers_df)} customers from all databases")
+        # Check if method exists to handle potential deployment issues
+        if hasattr(db, 'get_all_customers_admin'):
+            customers_df = db.get_all_customers_admin()
+            if not customers_df.empty:
+                st.info(f"🔐 **Admin View**: Showing {len(customers_df)} customers from all databases")
+        else:
+            st.warning("⚠️ Admin cross-database view is temporarily unavailable. Showing only admin database customers.")
+            customers_df = db.get_customers()
     else:
         customers_df = db.get_customers()
     
@@ -864,9 +869,14 @@ with tab_view:
     
     # Admin sees all invoices from all databases
     if require_admin():
-        invoices_df = db.get_all_invoices_admin()
-        if not invoices_df.empty:
-            st.info(f"🔐 **Admin View**: Showing {len(invoices_df)} invoices from all databases")
+        # Check if method exists to handle potential deployment issues
+        if hasattr(db, 'get_all_invoices_admin'):
+            invoices_df = db.get_all_invoices_admin()
+            if not invoices_df.empty:
+                st.info(f"🔐 **Admin View**: Showing {len(invoices_df)} invoices from all databases")
+        else:
+            st.warning("⚠️ Admin cross-database view is temporarily unavailable. Showing only admin database invoices.")
+            invoices_df = db.get_invoices()
     else:
         invoices_df = db.get_invoices()
     
