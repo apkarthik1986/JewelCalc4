@@ -930,3 +930,126 @@ class Database:
             conn.rollback()
             conn.close()
             raise e
+    
+    def get_all_customers_admin(self):
+        """Get all customers from all user databases (admin only).
+        Returns DataFrame with an additional 'database' column indicating source.
+        User data takes priority over duplicates."""
+        import glob
+        import os
+        
+        all_customers = []
+        seen_phones = set()  # Track unique customers by phone (user data takes priority)
+        
+        # First, get customers from user databases (these take priority)
+        user_dbs = glob.glob('jewelcalc_user_*.db')
+        for db_file in user_dbs:
+            try:
+                user_id = db_file.replace('jewelcalc_user_', '').replace('.db', '')
+                conn = sqlite3.connect(db_file, check_same_thread=False)
+                df = pd.read_sql_query(
+                    'SELECT id, account_no, name, phone, address FROM customers ORDER BY id DESC',
+                    conn
+                )
+                conn.close()
+                
+                if not df.empty:
+                    df['database'] = f'User {user_id}'
+                    df['db_path'] = db_file
+                    # Mark phones from user databases
+                    for phone in df['phone'].tolist():
+                        seen_phones.add(phone)
+                    all_customers.append(df)
+            except Exception:
+                pass  # Skip if database doesn't exist or has errors
+        
+        # Then, get customers from admin database (skip duplicates based on phone)
+        admin_db_path = 'jewelcalc_admin.db'
+        if os.path.exists(admin_db_path):
+            try:
+                conn = sqlite3.connect(admin_db_path, check_same_thread=False)
+                df = pd.read_sql_query(
+                    'SELECT id, account_no, name, phone, address FROM customers ORDER BY id DESC',
+                    conn
+                )
+                conn.close()
+                
+                if not df.empty:
+                    # Filter out duplicates (user data takes priority)
+                    df = df[~df['phone'].isin(seen_phones)]
+                    if not df.empty:
+                        df['database'] = 'Admin'
+                        df['db_path'] = admin_db_path
+                        all_customers.append(df)
+            except Exception:
+                pass
+        
+        # Combine all customer data
+        if all_customers:
+            combined_df = pd.concat(all_customers, ignore_index=True)
+            # Sort by most recent (assuming higher IDs are more recent within each database)
+            return combined_df
+        else:
+            return pd.DataFrame(columns=['id', 'account_no', 'name', 'phone', 'address', 'database', 'db_path'])
+    
+    def get_all_invoices_admin(self):
+        """Get all invoices from all user databases (admin only).
+        Returns DataFrame with an additional 'database' column indicating source."""
+        import glob
+        import os
+        
+        all_invoices = []
+        
+        # Get invoices from user databases
+        user_dbs = glob.glob('jewelcalc_user_*.db')
+        for db_file in user_dbs:
+            try:
+                user_id = db_file.replace('jewelcalc_user_', '').replace('.db', '')
+                conn = sqlite3.connect(db_file, check_same_thread=False)
+                df = pd.read_sql_query('''
+                    SELECT 
+                        i.id, i.invoice_no, i.date, i.total,
+                        c.name as customer_name, c.phone as customer_phone, c.account_no
+                    FROM invoices i
+                    LEFT JOIN customers c ON i.customer_id = c.id
+                    ORDER BY i.date DESC
+                ''', conn)
+                conn.close()
+                
+                if not df.empty:
+                    df['database'] = f'User {user_id}'
+                    df['db_path'] = db_file
+                    all_invoices.append(df)
+            except Exception:
+                pass  # Skip if database doesn't exist or has errors
+        
+        # Get invoices from admin database
+        admin_db_path = 'jewelcalc_admin.db'
+        if os.path.exists(admin_db_path):
+            try:
+                conn = sqlite3.connect(admin_db_path, check_same_thread=False)
+                df = pd.read_sql_query('''
+                    SELECT 
+                        i.id, i.invoice_no, i.date, i.total,
+                        c.name as customer_name, c.phone as customer_phone, c.account_no
+                    FROM invoices i
+                    LEFT JOIN customers c ON i.customer_id = c.id
+                    ORDER BY i.date DESC
+                ''', conn)
+                conn.close()
+                
+                if not df.empty:
+                    df['database'] = 'Admin'
+                    df['db_path'] = admin_db_path
+                    all_invoices.append(df)
+            except Exception:
+                pass
+        
+        # Combine all invoice data
+        if all_invoices:
+            combined_df = pd.concat(all_invoices, ignore_index=True)
+            # Sort by date (most recent first)
+            combined_df = combined_df.sort_values('date', ascending=False)
+            return combined_df
+        else:
+            return pd.DataFrame(columns=['id', 'invoice_no', 'date', 'total', 'customer_name', 'customer_phone', 'account_no', 'database', 'db_path'])
