@@ -776,13 +776,13 @@ class Database:
         '''
         params = []
         if start_date and end_date:
-            query += ' WHERE i.date BETWEEN ? AND ?'
+            query += ' WHERE i.date >= ? AND i.date < ?'
             params = [start_date, end_date]
         elif start_date:
             query += ' WHERE i.date >= ?'
             params = [start_date]
         elif end_date:
-            query += ' WHERE i.date <= ?'
+            query += ' WHERE i.date < ?'
             params = [end_date]
         
         query += ' ORDER BY i.date DESC'
