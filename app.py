@@ -896,6 +896,10 @@ with tab_view:
         
         # Display invoices
         for _, row in invoices_df.iterrows():
+            # Create a unique key suffix for widgets in this invoice
+            # Use row id and database path to ensure uniqueness across all databases
+            unique_key_suffix = f"{row['id']}_{row.get('db_path', 'default').replace('.', '_').replace('/', '_')}"
+            
             # For admin viewing all databases, show database source in title
             if require_admin() and 'database' in row and pd.notna(row.get('database')):
                 invoice_title = f"📄 {row['invoice_no']} | {row['customer_name']} | {format_currency(row['total'])} | {row['date']} | 🗄️ {row['database']}"
@@ -962,11 +966,11 @@ with tab_view:
                         data=pdf_buffer,
                         file_name=f"{row['invoice_no']}.pdf",
                         mime="application/pdf",
-                        key=f"dl_{row['invoice_no']}",
-                        on_click=lambda: st.session_state.update({f'pdf_downloaded_{row["invoice_no"]}': True})
+                        key=f"dl_{unique_key_suffix}",
+                        on_click=lambda uks=unique_key_suffix: st.session_state.update({f'pdf_downloaded_{uks}': True})
                     )
                     # Show download completion message
-                    if st.session_state.get(f'pdf_downloaded_{row["invoice_no"]}'):
+                    if st.session_state.get(f'pdf_downloaded_{unique_key_suffix}'):
                         st.success("✅ PDF downloaded!")
                 
                 # Thermal print
@@ -978,12 +982,12 @@ with tab_view:
                         data=thermal_buffer,
                         file_name=f"{row['invoice_no']}_thermal.pdf",
                         mime="application/pdf",
-                        key=f"thermal_{row['invoice_no']}"
+                        key=f"thermal_{unique_key_suffix}"
                     )
                 
                 # Duplicate invoice button
                 with col3:
-                    if st.button("📋 Duplicate", key=f"duplicate_{row['invoice_no']}", use_container_width=True):
+                    if st.button("📋 Duplicate", key=f"duplicate_{unique_key_suffix}", use_container_width=True):
                         # Generate new invoice number
                         new_invoice_no = generate_invoice_number()
                         try:
@@ -998,14 +1002,14 @@ with tab_view:
                 
                 # Edit invoice button
                 with col4:
-                    if st.button("✏️ Edit Invoice", key=f"edit_{row['invoice_no']}", use_container_width=True):
+                    if st.button("✏️ Edit Invoice", key=f"edit_{unique_key_suffix}", use_container_width=True):
                         st.session_state.editing_invoice_id = invoice['id']
                         st.session_state.editing_invoice_no = row['invoice_no']
                         st.rerun()
                 
                 # Delete Invoice button
                 with col5:
-                    if st.button("🗑️ Delete", key=f"delete_{row['invoice_no']}", use_container_width=True, type="secondary"):
+                    if st.button("🗑️ Delete", key=f"delete_{unique_key_suffix}", use_container_width=True, type="secondary"):
                         if st.session_state.get(f'confirm_delete_invoice_{invoice["id"]}'):
                             try:
                                 db.delete_invoice(invoice['id'])
